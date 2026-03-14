@@ -1,116 +1,116 @@
 [**🇨🇳 中文**](README_zh-CN.md) |[**🇬🇧 English**](README.md)
 
-# 📄 ContextBridge (Beta)
+# 🧠 ContextBridge (Beta)
 
-> **The missing Office document bridge for your local AI Agents.**  
-> A seamless bridge that breaks the Word/Excel memory barrier for your local AI Agents (like OpenClaw, Claude Code, and Cursor).
+> **The All-in-One Local Memory Bridge for AI Agents.**  
+> Feed your local AI Agents (OpenClaw, Claude Code, Cursor) with Office documents, instantly. Batteries included.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+[![Zero Config](https://img.shields.io/badge/Setup-Zero_Config-brightgreen.svg)]()
 
-## 💡 Why build this?
+## 💡 Why build ContextBridge?
 
-[QMD](https://github.com/tobi/qmd) is currently one of the most powerful, fully local, and low-RAM AI knowledge retrieval engines. However, by design, it is a "text-purist" tool and cannot directly read complex office formats like `.docx` and `.xlsx`.
+Most local AI Agents are great at reading code, but they are "blind" to your real-world business data hidden inside `.docx` and `.xlsx` files. 
 
-**ContextBridge** is the ultimate sidecar tool built to solve this. Through fully automated background monitoring, the moment you drop a Word or Excel file into a folder, it converts it into high-fidelity Markdown and automatically triggers QMD to update its vector index. 
+Previously, if you wanted to build a local document retrieval system for your Agent, you had to endure a nightmare setup: *Install Node -> Install Bun -> Install a vector DB -> Configure PATHs -> Write a parsing script -> Connect them all...*
 
-**Drop your Office files in, and your local AI Agent can instantly "read" and "remember" them. 100% local, zero cloud uploads, and absolute privacy.**
+**ContextBridge fixes this by doing everything out-of-the-box.** 
+We wrap Microsoft's high-fidelity `MarkItDown` parser and embed the blazing-fast `QMD` search runtime directly into one unified tool. No external dependencies, no complex configurations. **Just clone, install, and your Agent has a memory.**
 
 ---
 
 ## ✨ Core Features
 
-- 👁️ **Millisecond Monitoring**: System-level background file monitoring powered by `watchdog` for zero-latency awareness.
-- 🪄 **High-Fidelity Conversion**: Under the hood, it leverages Microsoft's open-source `MarkItDown` engine to accurately parse complex tables and layouts.
-- ⚡ **Automated QMD Sync**: Built-in debounce mechanism to smartly trigger `qmd embed` without overloading your system.
-- 🔒 **100% Privacy**: No cloud APIs required. Everything is parsed and embedded entirely on your local machine.
-- 🤖 **Perfect Agent Companion**: The ideal plugin for MCP-supported local AI frameworks like OpenClaw, Cursor, and Claude Code.
+- 🔋 **Batteries Included**: Comes with an embedded `qmd` search runtime. No need to manually install Bun, configure PATHs, or initialize indexes.
+- 👁️ **Zero-Touch Sync**: Drop a Word or Excel file into the watched folder. ContextBridge automatically parses it to high-fidelity Markdown and rebuilds the local vector index instantly.
+- 🔌 **Native Agent API & MCP**: Exposes a clean local API and an MCP (Model Context Protocol) interface. Connect it to OpenClaw or Claude Code with just one line of config.
+- 🔒 **100% Local & Private**: No cloud APIs. Your financial reports and business documents never leave your machine.
 
 ---
 
-## 🏗️ How it works
+## 🏗️ Architecture (Under the Hood)
+
+ContextBridge abstracts away the complexity of modern RAG (Retrieval-Augmented Generation) pipelines into a single node:
 
 ```mermaid
 graph LR
-    A[Drop Word/Excel] -->|Background Watch| B(ContextBridge)
-    B -->|MarkItDown Engine| C[High-Fidelity Markdown]
-    C -->|Write to Watch Dir| D(QMD Knowledge Base)
-    B -->|Auto Debounce Trigger| E[qmd embed]
-    E --> F((AI Agent Fast Search))
+    subgraph ContextBridge["ContextBridge (All-in-One Runtime)"]
+        direction TB
+        A[File Watcher] -->|Auto-Parse| B(MarkItDown Engine)
+        B -->|Clean Text| C[(Embedded QMD Engine)]
+        C -->|Auto-Index| D[Local Vector Store]
+        D -->|Serve| E[MCP / REST API]
+    end
+    User[Drop Word/Excel] -->|Drag & Drop| A
+    E <-->|Query & Retrieve| Agent((AI Agent / IDE))
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Zero Config)
 
-### 1. Prerequisites
-Ensure you have **Python 3.9+** installed, and [QMD](https://github.com/tobi/qmd) is globally installed and properly configured on your machine.
+Forget about installing separate vector databases or search CLIs. We handle it all.
 
-### 2. Install ContextBridge
-Clone this repository and install the required dependencies:
+### 1. Install ContextBridge
+Clone the repository and install the dependencies (Python 3.9+ required):
 ```bash
 git clone https://github.com/yourusername/ContextBridge.git
 cd ContextBridge
 pip install -r requirements.txt
 ```
-*(Note: `requirements.txt` mainly contains `markitdown` and `watchdog`)*
+*(During installation, ContextBridge will automatically bootstrap the embedded search engine in the background).*
 
-### 3. Configuration
-Copy the example config file and set up your watch directories:
-```bash
-cp config.example.yaml config.yaml
-```
-Edit `config.yaml`:
-```yaml
-paths:
-  # The directory where you drop your raw Word/Excel files
-  raw_office_dir: "~/Documents/office_raw"
-  # The output directory for the converted Markdown files (watched by QMD)
-  markdown_output_dir: "~/Documents/md_ready"
-  
-qmd:
-  # Debounce time (in seconds) before triggering index rebuild
-  debounce_seconds: 10 
-```
-
-### 4. Link to QMD
-Add the markdown output directory to your QMD knowledge base:
-```bash
-qmd collection add ~/Documents/md_ready --name office_docs --mask "**/*.md"
-```
-
-### 5. Run the Bridge
+### 2. Start the Engine
 ```bash
 python main.py
 ```
-🎉 **Boom! You're all set!** Now, try dropping an `.xlsx` financial report into the `office_raw` folder, and ask your AI Agent (or type in the terminal): `qmd query "summarize the data in the latest report"` to witness the magic!
+**That's it!** The engine is now running locally. It will automatically create a `~/ContextBridge_Workspace` directory on your machine.
+
+### 3. Test the Magic
+1. Drag and drop any `.docx` or `.xlsx` file into `~/ContextBridge_Workspace/raw_docs`.
+2. Open your terminal and test the built-in search API directly:
+```bash
+# ContextBridge provides a global alias for instant searching
+cbridge search "Summarize the Q3 revenue from the Excel file"
+```
 
 ---
 
-## 🗺️ Roadmap
+## 🤖 Connecting to Your AI Agent (MCP)
 
-We envision ContextBridge not just as a geeky script, but evolving into a comprehensive local data bridge for all knowledge workers.
+ContextBridge natively supports the **Model Context Protocol (MCP)**, making it a plug-and-play memory module for modern Agents.
 
-### Phase 1: Core Engine (Current)
-- [x] Auto-watch & convert Word (`.docx`) and Excel (`.xlsx`).
-- [x] Auto-trigger QMD vector indexing with debounce logic.
-- [ ] Add parsing support for PPT (`.pptx`) and PDF (`.pdf`).
+**For Claude Code / Cursor / OpenClaw:**
+Simply add ContextBridge to your agent's MCP configuration file:
 
-### Phase 2: Out-of-the-Box (Upcoming)
-- [ ] Package into standalone executables (Windows `.exe`, macOS `.dmg`) - no Python environment needed!
-- [ ] Support PM2 / Systemd for one-click daemon/background service registration.
+```json
+{
+  "mcpServers": {
+    "context-bridge": {
+      "command": "python",
+      "args": ["/path/to/ContextBridge/mcp_server.py"]
+    }
+  }
+}
+```
+Once connected, your AI Agent will autonomously query ContextBridge whenever it needs to recall information from your Office documents.
 
-### Phase 3: Desktop Product Vision
-- [ ] Build a lightweight GUI using Tauri / Electron.
-- [ ] System Tray integration to visually monitor conversion status and QMD index health.
-- [ ] Dashboard statistics: Number of documents processed and estimated LLM API token costs saved.
+---
+
+## 🗺️ Roadmap & Vision
+
+Our goal is to make ContextBridge the standard "Local Knowledge Component" for the AI Agent era.
+
+- [x] **Phase 1: Unified Runtime** - Bundle MarkItDown and QMD engine into a single 1-click install workflow.
+- [ ] **Phase 2: Expanded Modalities** - Auto-parse PDF (OCR), PPTX, and even local images.
+- [ ] **Phase 3: GUI & Desktop App** - A lightweight Tauri-based menu bar app for non-developers to manage their Agent's memory visually.
 
 ---
 
 ## 🤝 Contributing
 
-Pull Requests and Issues are highly welcome! If you are interested in collaborating to turn this into a commercial/desktop product (Phase 3), feel free to reach out via email.
+We welcome contributions! If you're passionate about local AI, RAG, and Developer Experience (DX), join us in building the ultimate memory bridge.
 
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
@@ -122,7 +122,4 @@ Pull Requests and Issues are highly welcome! If you are interested in collaborat
 
 ## 📜 License
 
-Distributed under the [MIT License](LICENSE).
-
----
-*If this project saves your time (and LLM API tokens), please consider giving it a ⭐️!*
+Distributed under the[MIT License](LICENSE). 
