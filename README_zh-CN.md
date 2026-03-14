@@ -1,4 +1,4 @@
-# DocBridge (Beta)
+# ContextBridge (Beta)
 
 > **The missing Office document bridge for your local AI Agents.**  
 > 为你的本地 AI Agent（如 OpenClaw, Claude Code）打通 Word/Excel 记忆壁垒的无缝桥梁。
@@ -11,7 +11,7 @@
 
 [QMD](https://github.com/tobi/qmd) 是目前地表最强的纯本地、低显存 AI 知识库检索引擎。但它天生是一个“纯文本原教旨主义者”，无法直接读取复杂的 `.docx` 和 `.xlsx` 办公文档。
 
-**DocBridge** 就是为此而生的旁路桥接工具。它通过全自动的后台监听，在你将 Word/Excel 拖入文件夹的瞬间，以极高的保真度将其转换为 Markdown，并自动触发 QMD 更新向量索引。
+**ContextBridge** 就是为此而生的旁路桥接工具。它通过全自动的后台监听，在你将 Word/Excel 拖入文件夹的瞬间，以极高的保真度将其转换为 Markdown，并自动触发 QMD 更新向量索引。
 
 **把 Office 文件扔进去，你的本地 AI Agent 立刻就能“读懂”它们。全程 100% 本地运行，绝不上传任何私密业务数据。**
 
@@ -31,7 +31,7 @@
 
 ```mermaid
 graph LR
-    A[拖入 Word/Excel] -->|后台监听| B(DocBridge)
+    A[拖入 Word/Excel] -->|后台监听| B(ContextBridge)
     B -->|MarkItDown 引擎| C[高保真 Markdown]
     C -->|写入监控目录| D(QMD Knowledge Base)
     B -->|自动防抖触发| E[qmd embed]
@@ -45,11 +45,11 @@ graph LR
 ### 1. 环境准备
 确保你的电脑已安装 **Python 3.9+**，并且已经全局安装并配置好了 [QMD](https://github.com/tobi/qmd)。
 
-### 2. 安装 DocBridge
+### 2. 安装 ContextBridge
 克隆本仓库并安装依赖：
 ```bash
-git clone https://github.com/yourusername/DocBridge.git
-cd DocBridge
+git clone https://github.com/yourusername/ContextBridge.git
+cd ContextBridge
 pip install -r requirements.txt
 ```
 *(注：`requirements.txt` 包含 `markitdown` 和 `watchdog`)*
