@@ -1,0 +1,8 @@
+markitdown
+watchdog
+chromadb
+mcp
+pydantic
+PyYAML
+click
+tqdm

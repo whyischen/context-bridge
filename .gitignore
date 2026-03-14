@@ -85,23 +85,18 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Node.js
+node_modules/
+build/
+dist/
+coverage/
+
+# Environment
+.env*
+!.env.example
+*.log
+
 # IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sublime-project
-*.sublime-workspace
-.project
-.classpath
-.settings/
-*.iml
-*.iws
-*.ipr
-.fleet/
-.zed/
 .kiro/
