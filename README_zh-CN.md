@@ -1,4 +1,4 @@
-[**🇨🇳 中文**](README_zh-CN.md) | [**🇬🇧 English**](README.md)
+[**🇨🇳 中文**](https://github.com/whyischen/ContextBridge/blob/main/README_zh-CN.md) |[**🇬🇧 English**](https://github.com/whyischen/ContextBridge/blob/main/README.md)
 
 # 🧠 ContextBridge (Beta)
 
