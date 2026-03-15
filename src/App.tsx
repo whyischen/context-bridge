@@ -3,13 +3,51 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Brain, Database, FileText, Terminal, FolderSync, Settings, Activity, Languages, Zap, ArrowRight, Github, Copy, Check } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { Brain, Database, FileText, Terminal, FolderSync, Settings, Activity, Languages, Zap, ArrowRight, Github, Copy, Check, Blocks } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import enDocs from '../docs/usage_en.md?raw';
+import zhDocs from '../docs/usage_zh.md?raw';
+
+const DocsViewer = ({ lang, onClose }: { lang: 'en' | 'zh', onClose: () => void }) => {
+  const content = lang === 'en' ? enDocs : zhDocs;
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = 'auto'; };
+  }, []);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 20 }}
+      className="fixed inset-0 z-[100] bg-[#0a0a0a] overflow-y-auto"
+    >
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        <button 
+          onClick={onClose}
+          className="mb-8 flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
+        >
+          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+            <ArrowRight className="rotate-180" size={18} />
+          </div>
+          {lang === 'en' ? 'Back to Home' : '返回首页'}
+        </button>
+        <div className="prose prose-invert prose-indigo max-w-none prose-pre:bg-[#111] prose-pre:border prose-pre:border-white/10 prose-headings:text-indigo-100 prose-a:text-indigo-400 hover:prose-a:text-indigo-300">
+          <ReactMarkdown rehypePlugins={[rehypeRaw]}>{content}</ReactMarkdown>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 export default function App() {
   const [lang, setLang] = useState<'en' | 'zh'>('zh');
   const [copied, setCopied] = useState(false);
+  const [showDocs, setShowDocs] = useState(false);
 
   const copyInstallCmd = () => {
     navigator.clipboard.writeText('pip install cbridge-agent');
@@ -125,13 +163,27 @@ export default function App() {
       {/* Navigation */}
       <nav className="fixed top-0 w-full border-b border-white/10 bg-black/50 backdrop-blur-md z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-mono font-bold text-lg">
-            <div className="w-8 h-8 rounded bg-indigo-500 flex items-center justify-center">
-              <Zap size={18} className="text-white" />
+          <div className="flex items-center gap-3 font-bold text-xl group cursor-pointer selection:bg-transparent" onClick={() => setShowDocs(false)}>
+            <div className="relative w-9 h-9 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 via-purple-500 to-cyan-400 rounded-xl blur-md opacity-50 group-hover:opacity-80 transition-opacity duration-300"></div>
+              <div className="relative w-full h-full bg-gradient-to-tr from-indigo-600 to-cyan-500 rounded-xl flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] border border-white/20">
+                <Blocks size={20} className="text-white drop-shadow-md" />
+              </div>
             </div>
-            ContextBridge
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-100 to-gray-300 tracking-tight font-sans">ContextBridge</span>
           </div>
           <div className="flex items-center gap-6">
+            <button 
+              onClick={() => setShowDocs(true)}
+              className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 text-sm font-medium"
+            >
+              <FileText size={18} />
+              Docs
+            </button>
+            <a href="https://github.com/whyischen/ContextBridge" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 text-sm font-medium">
+              <Github size={18} />
+              GitHub
+            </a>
             <button 
               onClick={() => setLang(lang === 'en' ? 'zh' : 'en')}
               className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm font-medium"
@@ -139,24 +191,6 @@ export default function App() {
               <Languages size={18} />
               {lang === 'en' ? '中文' : 'English'}
             </button>
-            <a 
-              href={lang === 'en' 
-                ? "https://github.com/whyischen/ContextBridge/blob/main/docs/usage_en.md" 
-                : "https://github.com/whyischen/ContextBridge/blob/main/docs/usage_zh.md"} 
-              target="_blank" 
-              rel="noreferrer" 
-              className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 text-sm font-medium"
-            >
-              <FileText size={18} />
-              {lang === 'en' ? 'Docs' : '文档'}
-            </a>
-            <a href="https://github.com/whyischen/ContextBridge" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 text-sm font-medium">
-              <Github size={18} />
-              GitHub
-            </a>
-            <a href="https://pypi.org/project/cbridge-agent/" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white transition-colors text-sm font-medium">
-              PyPI
-            </a>
           </div>
         </div>
       </nav>
@@ -165,18 +199,7 @@ export default function App() {
       <main className="pt-32 pb-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-sm font-medium mb-8 border border-indigo-500/20"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-              </span>
-              {t.badgeText}
-            </motion.div>
+
 
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
@@ -267,11 +290,14 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between text-gray-500 text-sm">
           <p>© {new Date().getFullYear()} ContextBridge. Open source under MIT License.</p>
           <div className="flex items-center gap-4 mt-4 md:mt-0">
-            <a href="https://github.com/whyischen/cbridge" className="hover:text-white transition-colors">GitHub</a>
-            <a href="https://pypi.org/project/cbridge-agent/" className="hover:text-white transition-colors">PyPI</a>
+            <a href="https://github.com/whyischen/ContextBridge" className="hover:text-white transition-colors">GitHub</a>
           </div>
         </div>
       </footer>
+
+      <AnimatePresence>
+        {showDocs && <DocsViewer lang={lang} onClose={() => setShowDocs(false)} />}
+      </AnimatePresence>
     </div>
   );
 }
