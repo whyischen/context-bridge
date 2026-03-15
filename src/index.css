@@ -1,2 +1,34 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+
+/* Performance optimizations */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Optimize animations */
+@layer utilities {
+  .will-animate {
+    will-change: transform, opacity;
+  }
+
+  .contain-layout {
+    contain: layout style paint;
+  }
+
+  /* Mobile-first performance */
+  @media (max-width: 640px) {
+    .reduce-motion {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
