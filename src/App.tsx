@@ -21,7 +21,10 @@ export default function App() {
     en: {
       title: "ContextBridge",
       badge: "v0.1.1",
-      subtitle: "The All-in-One Local Memory Bridge for AI Agents. Feed your local AI Agents with Office documents, instantly. Batteries included.",
+      heroTitle: "Give ",
+      heroHighlight: "AI Agents",
+      heroSuffix: " Instant Access to Your Local Documents",
+      subtitle: "A lightweight Knowledge Base plugin for openclaw, Cursor and other AI agents. Let your AI assistants directly read and understand your local Word, Excel, and PDF files.",
       features: [
         {
           icon: Settings,
@@ -30,8 +33,8 @@ export default function App() {
         },
         {
           icon: FolderSync,
-          title: "Dynamic Monitoring",
-          desc: <>Easily add, list, or remove watched directories on the fly using the <code className="text-indigo-300">cbridge watch</code> commands. No manual config editing needed.</>
+          title: "Smart Folder Watcher",
+          desc: <>Effortlessly track project directories with <code className="text-indigo-300">cbridge watch</code>. Add or remove context sources instantly without restarts.</>
         },
         {
           icon: Activity,
@@ -50,8 +53,8 @@ export default function App() {
         },
         {
           icon: FileText,
-          title: "High-Fidelity Parsing",
-          desc: "Drop a Word, Excel, or PDF file into the watched folder. ContextBridge automatically parses it to high-fidelity Markdown."
+          title: "Multi-Format Support",
+          desc: "Seamlessly handles Word, Excel, PDF, and Markdown. ContextBridge automatically parses your diverse local documents into high-fidelity context for your agents."
         }
       ],
       quickStart: "Quick Start",
@@ -67,7 +70,10 @@ export default function App() {
     zh: {
       title: "ContextBridge",
       badge: "v0.1.1",
-      subtitle: "专为 AI 智能体打造的一站式本地记忆桥梁。让您的本地 AI 智能体瞬间读取 Office 文档。开箱即用。",
+      heroTitle: "让 ",
+      heroHighlight: "AI 智能体",
+      heroSuffix: <> 瞬间读懂你的<span className="whitespace-nowrap">本地文档</span></>,
+      subtitle: "专为 openclaw、Cursor 等智能体设计的极速知识库外挂。让你的 AI 助手直接读取、理解本地的 Word、Excel 和 PDF 文件，无需上传，隐私安全。",
       features: [
         {
           icon: Settings,
@@ -76,13 +82,13 @@ export default function App() {
         },
         {
           icon: FolderSync,
-          title: "动态目录监控",
-          desc: <>使用 <code className="text-indigo-300">cbridge watch</code> 命令随时添加、查看或移除监控目录，无需手动修改配置文件。</>
+          title: "智能目录监控",
+          desc: <>使用 <code className="text-indigo-300">cbridge watch</code> 命令轻松追踪项目目录。无需重启，即可实时动态增减上下文来源。</>
         },
         {
           icon: Activity,
-          title: "实时增删改同步",
-          desc: "瞬间感知文件的创建、修改和删除。ContextBridge 会自动解析并在后台实时更新向量索引。"
+          title: "毫秒级增量同步",
+          desc: "精准捕捉文件创建、修改及删除。ContextBridge 会在后台自动完成毫秒级解析并同步更新向量索引。"
         },
         {
           icon: Terminal,
@@ -96,8 +102,8 @@ export default function App() {
         },
         {
           icon: FileText,
-          title: "高保真解析",
-          desc: "将 Word、Excel 或 PDF 文件拖入监控目录，ContextBridge 会自动将其解析为高保真 Markdown。"
+          title: "多格式支持",
+          desc: "完美支持 Word、Excel、PDF 及 Markdown。ContextBridge 会自动将多种格式的本地文档解析为高保真 Markdown，为智能体提供精准上下文。"
         }
       ],
       quickStart: "快速开始",
@@ -165,9 +171,9 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight"
+              className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight break-keep"
             >
-              The All-in-One Local Memory Bridge for <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">AI Agents</span>
+              {t.heroTitle}<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">{t.heroHighlight}</span>{t.heroSuffix}
             </motion.h1>
 
             <motion.p 
