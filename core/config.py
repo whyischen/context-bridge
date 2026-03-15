@@ -58,5 +58,33 @@ def init_workspace():
     for d in get_watch_dirs():
         d.mkdir(parents=True, exist_ok=True)
         
+    # Inject demo doc out of the box
+    demo_doc = RAW_DOCS_DIR / "Welcome_to_ContextBridge.md"
+    if not demo_doc.exists():
+        demo_content = (
+            "# 欢迎使用 ContextBridge (Welcome to ContextBridge!)\n\n"
+            "## 介绍 (Introduction)\n"
+            "ContextBridge 是一款专为 AI 智能体打造的一站式本地记忆桥梁 (The All-in-One Local Memory Bridge for AI Agents)。\n"
+            "它能够让您的本地 AI 智能体瞬间读取 Office 文档 (Word、Excel、PDF、PowerPoint 等)，并自动转化为高保真的 Markdown 内容。\n\n"
+            "## 核心特性 (Key Features)\n"
+            "- **实时目录监控 (Dynamic Monitoring)**: 自动感知文件新增、修改与删除，保持上下文永远最新。\n"
+            "- **开箱即用 (Batteries Included)**: 内嵌 ChromaDB 检索引擎，零额外配置，本地向量搜索即刻生效。\n"
+            "- **多语言界面 (i18n Support)**: 支持中英文命令行无缝切换。\n\n"
+            "您可以尝试随时运行搜索指令，例如:\n"
+            "> cbridge search ContextBridge\n"
+        )
+        with open(demo_doc, "w", encoding="utf-8") as f:
+            f.write(demo_content)
+            
+        try:
+            from core.factories import initialize_system
+            cm = initialize_system()
+            parsed_path = PARSED_DOCS_DIR / f"{demo_doc.stem}.md"
+            with open(parsed_path, "w", encoding="utf-8") as pf:
+                pf.write(demo_content)
+            cm.write_context(demo_doc.name, demo_content, level="L2")
+        except Exception as e:
+            pass
+
     from core.i18n import i18n
     i18n.print("workspace_initialized", workspace=WORKSPACE_DIR, mode=CONFIG.get('mode', 'embedded'))
