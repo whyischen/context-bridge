@@ -7,6 +7,7 @@ from core.config import RAW_DOCS_DIR, PARSED_DOCS_DIR, get_watch_dirs
 from core.parser import parse_document
 from core.factories import initialize_system
 from tqdm import tqdm
+from core.i18n import i18n
 
 class DocumentHandler(FileSystemEventHandler):
     def __init__(self, context_manager):
@@ -16,11 +17,11 @@ class DocumentHandler(FileSystemEventHandler):
         path = Path(file_path)
         if path.suffix.lower() in ['.docx', '.xlsx', '.pdf', '.pptx', '.md', '.txt']:
             if event_type == "deleted":
-                print(f"File deleted: {path.name}")
+                i18n.print("file_deleted", name=path.name)
                 self.context_manager.delete_context(path.name)
                 return
 
-            print(f"File {event_type}: {path.name}")
+            i18n.print("file_event", event_type=event_type, name=path.name)
             content = parse_document(path)
             if content:
                 # Save parsed markdown
@@ -55,18 +56,18 @@ def index_all():
                     all_files.append(path)
                     
     if not all_files:
-        print("No files found to index.")
+        i18n.print("no_files_index")
         return
 
-    print(f"Found {len(all_files)} files. Starting initial indexing...")
-    for path in tqdm(all_files, desc="Indexing files", unit="file"):
+    i18n.print("found_files_index", count=len(all_files))
+    for path in tqdm(all_files, desc=i18n.get("indexing_files"), unit="file"):
         content = parse_document(path)
         if content:
             parsed_path = PARSED_DOCS_DIR / f"{path.stem}.md"
             with open(parsed_path, "w", encoding="utf-8") as f:
                 f.write(content)
             context_manager.write_context(path.name, content, level="L2")
-    print("Indexing complete!")
+    i18n.print("index_complete")
 
 def start_watching():
     context_manager = initialize_system()
@@ -76,7 +77,7 @@ def start_watching():
     watch_dirs = get_watch_dirs()
     for d in watch_dirs:
         observer.schedule(event_handler, str(d), recursive=True)
-        print(f"Watching for document changes in {d}...")
+        i18n.print("watching_dirs", dir=d)
         
     observer.start()
     try:

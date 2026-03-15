@@ -1,10 +1,8 @@
-import logging
 import uuid
 from typing import List, Dict, Any
 from core.interfaces.context_manager import IContextManager
 from core.interfaces.search_runtime import ISearchRuntime
-
-logger = logging.getLogger(__name__)
+from core.i18n import i18n
 
 class OpenVikingManager(IContextManager):
     def __init__(self, search_runtime: ISearchRuntime, config: dict):
@@ -15,9 +13,9 @@ class OpenVikingManager(IContextManager):
         self.collection_name = config.get("qmd", {}).get("collection", "cb_documents")
         
         if self.mode == "embedded":
-            logger.info(f"初始化内嵌 OpenViking 管理器, 挂载路径: {self.mount_path}")
+            i18n.print("ov_init_embedded", mount_path=self.mount_path)
         else:
-            logger.info(f"接入外部 OpenViking 服务: {self.endpoint}, 挂载路径: {self.mount_path}")
+            i18n.print("ov_init_external", endpoint=self.endpoint, mount_path=self.mount_path)
 
     def _generate_l0_abstract(self, content: str) -> str:
         # 模拟生成 L0 摘要 (实际应调用 LLM)
@@ -31,7 +29,7 @@ class OpenVikingManager(IContextManager):
         uri = f"{self.mount_path}{filename}"
         
         if self.mode == "embedded":
-            logger.info(f"[OpenViking] 正在处理上下文: {uri}")
+            i18n.print("ov_proc_ctx", uri=uri)
             
             # 1. 生成分层上下文
             l0_abstract = self._generate_l0_abstract(content)
@@ -57,21 +55,21 @@ class OpenVikingManager(IContextManager):
             )
             return True
         else:
-            logger.info(f"[外部 OpenViking] 模拟通过 API 将上下文写入 {uri}")
+            i18n.print("ov_proc_ctx_ext", uri=uri)
             return True
 
     def delete_context(self, filename: str) -> bool:
         uri = f"{self.mount_path}{filename}"
         if self.mode == "embedded":
-            logger.info(f"[OpenViking] 正在删除上下文: {uri}")
+            i18n.print("ov_del_ctx", uri=uri)
             return self.search_runtime.delete_by_uri(self.collection_name, uri)
         else:
-            logger.info(f"[外部 OpenViking] 模拟通过 API 删除上下文 {uri}")
+            i18n.print("ov_del_ctx_ext", uri=uri)
             return True
 
     def recursive_retrieve(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
         if self.mode == "embedded":
-            logger.info(f"[OpenViking] 执行目录递归检索策略: {query}")
+            i18n.print("ov_recursive_ret", query=query)
             
             # 1. 意图分析 (省略)
             # 2. 调用底层引擎寻找高分目录/文档
@@ -92,5 +90,5 @@ class OpenVikingManager(IContextManager):
                 })
             return final_context
         else:
-            logger.info(f"[外部 OpenViking] 模拟向 {self.endpoint} 发起递归检索: {query}")
+            i18n.print("ov_recursive_ret_ext", query=query)
             return []

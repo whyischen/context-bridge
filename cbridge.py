@@ -8,6 +8,7 @@ from core.factories import initialize_system
 from core.config import init_workspace, CONFIG, WORKSPACE_DIR, CONFIG_PATH, save_config, get_watch_dirs, add_watch_dir, remove_watch_dir
 from core.watcher import start_watching, index_all
 from core.mcp_server import main as mcp_main
+from core.i18n import i18n
 
 @click.group()
 def cli():
@@ -17,9 +18,16 @@ def cli():
 @cli.command()
 def init():
     """Initialize ContextBridge configuration interactively."""
-    click.echo("Welcome to ContextBridge Initialization!")
+    lang = click.prompt(i18n.get("choose_lang"), type=click.Choice(['en', 'zh']), default='zh')
+    i18n.set_lang(lang)
+    if lang == 'en':
+        i18n.print("lang_set")  # this is English version
+    else:
+        i18n.print("lang_set")  # this is Chinese version
     
-    mode = click.prompt("Choose mode (embedded/external)", type=click.Choice(['embedded', 'external']), default='embedded')
+    i18n.print("welcome_init")
+    
+    mode = click.prompt(i18n.get("choose_mode"), type=click.Choice(['embedded', 'external']), default='embedded')
     
     # Preserve existing watch_dirs if any
     existing_watch_dirs = CONFIG.get("watch_dirs", [])
@@ -28,10 +36,10 @@ def init():
         config_data["watch_dirs"] = existing_watch_dirs
     
     if mode == 'external':
-        ov_endpoint = click.prompt("OpenViking Endpoint", default="http://localhost:8080")
-        ov_mount = click.prompt("OpenViking Mount Path", default="viking://contextbridge/")
-        qmd_endpoint = click.prompt("QMD Endpoint", default="http://localhost:9090")
-        qmd_collection = click.prompt("QMD Collection", default="cb_documents")
+        ov_endpoint = click.prompt(i18n.get("ov_endpoint"), default="http://localhost:8080")
+        ov_mount = click.prompt(i18n.get("ov_mount"), default="viking://contextbridge/")
+        qmd_endpoint = click.prompt(i18n.get("qmd_endpoint"), default="http://localhost:9090")
+        qmd_collection = click.prompt(i18n.get("qmd_collection"), default="cb_documents")
         
         config_data["openviking"] = {
             "endpoint": ov_endpoint,
@@ -42,11 +50,11 @@ def init():
             "collection": qmd_collection
         }
     
-    workspace = click.prompt("Workspace Directory", default="~/ContextBridge_Workspace")
+    workspace = click.prompt(i18n.get("workspace_dir"), default="~/ContextBridge_Workspace")
     config_data["workspace_dir"] = workspace
     
     save_config(config_data)
-    click.echo(f"Configuration saved to {CONFIG_PATH.absolute()}")
+    i18n.print("config_saved", path=CONFIG_PATH.absolute())
     init_workspace()
 
 @cli.group()
@@ -58,40 +66,40 @@ def watch():
 def watch_list():
     """List all monitored directories."""
     dirs = get_watch_dirs()
-    click.echo("Currently monitored directories:")
+    i18n.print("monitored_dirs")
     for d in dirs:
-        click.echo(f"  - {d}")
+        i18n.print("dir_item", path=d)
 
 @watch.command(name="add")
 @click.argument("path")
 def watch_add(path):
     """Add a directory to monitor."""
     if add_watch_dir(path):
-        click.echo(f"Added '{path}' to monitored directories.")
+        i18n.print("dir_added", path=path)
     else:
-        click.echo(f"'{path}' is already being monitored.")
+        i18n.print("dir_already_monitored", path=path)
 
 @watch.command(name="remove")
 @click.argument("path")
 def watch_remove(path):
     """Remove a directory from monitoring."""
     if remove_watch_dir(path):
-        click.echo(f"Removed '{path}' from monitored directories.")
+        i18n.print("dir_removed", path=path)
     else:
-        click.echo(f"'{path}' was not in the monitored list.")
+        i18n.print("dir_not_in_list", path=path)
 
 @cli.command()
 def index():
     """Run a one-time index of all monitored directories."""
-    click.echo("Starting indexing process...")
+    i18n.print("start_indexing")
     index_all()
 
 @cli.command()
 def start():
     """Start the ContextBridge document watcher."""
-    click.echo("Initializing ContextBridge Workspace...")
+    i18n.print("init_workspace")
     init_workspace()
-    click.echo("Starting ContextBridge Engine...")
+    i18n.print("start_engine")
     start_watching()
 
 @cli.command()
@@ -103,45 +111,60 @@ def search(query, top_k):
     results = context_manager.recursive_retrieve(query, top_k=top_k)
     
     if not results:
-        click.echo("No results found.")
+        i18n.print("no_results")
         return
         
-    click.echo(f"\nSearch Results for: '{query}'\n" + "="*40)
+    i18n.print("search_results_title", query=query, divider="="*40)
     for res in results:
         source = res.get('uri', 'Unknown')
         content = res.get('content', '')
         score = res.get('score', 0.0)
-        click.echo(f"\n📄 Source: {source} (Score: {score:.4f})\n{'-'*40}\n{content.strip()}\n")
+        i18n.print("search_result_item", source=source, score=score, divider="-"*40, content=content.strip())
 
 @cli.command()
 def status():
     """Show current configuration and workspace status."""
-    click.echo("ContextBridge Status:")
-    click.echo(f"  Mode: {CONFIG.get('mode', 'embedded')}")
-    click.echo(f"  Workspace: {WORKSPACE_DIR}")
-    click.echo(f"  OpenViking Mount: {CONFIG.get('openviking', {}).get('mount_path')}")
-    click.echo(f"  QMD Collection: {CONFIG.get('qmd', {}).get('collection')}")
-    click.echo(f"  MCP Port: {CONFIG.get('mcp', {}).get('port', 4733)}")
+    i18n.print("status_title")
+    i18n.print("status_mode", mode=CONFIG.get('mode', 'embedded'))
+    i18n.print("status_workspace", workspace=WORKSPACE_DIR)
+    i18n.print("status_ov_mount", ov_mount=CONFIG.get('openviking', {}).get('mount_path'))
+    i18n.print("status_qmd_coll", qmd_collection=CONFIG.get('qmd', {}).get('collection'))
+    i18n.print("status_mcp_port", mcp_port=CONFIG.get('mcp', {}).get('port', 4733))
+    i18n.print("status_lang", lang=i18n.lang)
 
 @cli.command()
 def config():
     """Show the current configuration file path and contents."""
     import os
+    from rich.syntax import Syntax
+    from core.i18n import console
     config_path = Path("config.yaml")
-    click.echo(f"Config File: {config_path.absolute()}")
+    i18n.print("config_file", path=config_path.absolute())
     if config_path.exists():
-        click.echo("\nContents:\n" + "-"*40)
+        i18n.print("config_contents", divider="-"*40)
         with open(config_path, "r", encoding="utf-8") as f:
-            click.echo(f.read())
-        click.echo("-" * 40)
+            yaml_content = f.read()
+            syntax = Syntax(yaml_content, "yaml", theme="monokai", line_numbers=True)
+            console.print(syntax)
+        console.print("[dim]" + "-" * 40 + "[/]")
     else:
-        click.echo("No config.yaml found. Using default embedded settings.")
+        i18n.print("no_config")
 
 @cli.command()
 def mcp():
     """Start the MCP Server."""
-    click.echo("Starting ContextBridge MCP Server...")
+    i18n.print("start_mcp")
     asyncio.run(mcp_main())
+
+@cli.command()
+@click.argument('language', required=False, type=click.Choice(['en', 'zh']))
+def lang(language):
+    """Switch the interface language (en or zh)."""
+    if not language:
+        language = click.prompt(i18n.get("choose_lang"), type=click.Choice(['en', 'zh']), default=i18n.lang)
+    
+    i18n.set_lang(language)
+    i18n.print("lang_set")
 
 if __name__ == "__main__":
     cli()

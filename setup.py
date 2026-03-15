@@ -24,7 +24,8 @@ setup(
         "pydantic",
         "PyYAML",
         "click",
-        "tqdm"
+        "tqdm",
+        "rich"
     ],
     entry_points={
         "console_scripts": [

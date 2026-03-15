@@ -58,4 +58,5 @@ def init_workspace():
     for d in get_watch_dirs():
         d.mkdir(parents=True, exist_ok=True)
         
-    print(f"Workspace initialized at {WORKSPACE_DIR} in {CONFIG.get('mode', 'embedded')} mode")
+    from core.i18n import i18n
+    i18n.print("workspace_initialized", workspace=WORKSPACE_DIR, mode=CONFIG.get('mode', 'embedded'))

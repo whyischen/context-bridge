@@ -1,3 +1,4 @@
+lang: zh
 mode: embedded
 watch_dirs:
 - /Users/ekko/.context-bridge/raw_docs

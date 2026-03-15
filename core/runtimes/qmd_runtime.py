@@ -1,8 +1,6 @@
-import logging
 from typing import List, Dict, Any
 from core.interfaces.search_runtime import ISearchRuntime
-
-logger = logging.getLogger(__name__)
+from core.i18n import i18n
 
 class QMDRuntime(ISearchRuntime):
     def __init__(self, config):
@@ -11,7 +9,7 @@ class QMDRuntime(ISearchRuntime):
         self.collection_name = config.get("qmd", {}).get("collection", "cb_documents")
         
         if self.mode == "embedded":
-            logger.info("初始化内嵌 QMD 引擎 (基于 ChromaDB 模拟)...")
+            i18n.print("qmd_init_embedded")
             import chromadb
             import os
             from pathlib import Path
@@ -23,7 +21,7 @@ class QMDRuntime(ISearchRuntime):
             self.client = chromadb.PersistentClient(path=str(db_path))
             self.collection = self.client.get_or_create_collection(name=self.collection_name)
         else:
-            logger.info(f"接入外部 QMD 服务: {self.endpoint}, Collection: {self.collection_name}")
+            i18n.print("qmd_init_external", endpoint=self.endpoint, collection=self.collection_name)
             self.client = None # 实际场景中这里会初始化 QMD SDK
 
     def upsert(self, collection_name: str, doc_id: str, vector: List[float], payload: Dict[str, Any]) -> bool:
@@ -38,7 +36,7 @@ class QMDRuntime(ISearchRuntime):
             )
             return True
         else:
-            logger.info(f"[外部 QMD] 模拟向 {self.endpoint}/{collection_name} 写入文档 {doc_id}")
+            i18n.print("qmd_write_ext", doc_id=doc_id)
             return True
 
     def delete_by_uri(self, collection_name: str, uri: str) -> bool:
@@ -47,7 +45,7 @@ class QMDRuntime(ISearchRuntime):
             self.collection.delete(where={"uri": uri})
             return True
         else:
-            logger.info(f"[外部 QMD] 模拟向 {self.endpoint}/{collection_name} 发起删除 URI: {uri}")
+            i18n.print("qmd_del_ext", uri=uri)
             return True
 
     def hybrid_search(self, collection_name: str, query_text: str, top_k: int = 5) -> List[Dict[str, Any]]:
@@ -68,5 +66,5 @@ class QMDRuntime(ISearchRuntime):
                     })
             return formatted_results
         else:
-            logger.info(f"[外部 QMD] 模拟向 {self.endpoint}/{collection_name} 发起混合检索: {query_text}")
+            i18n.print("qmd_ret_ext", query=query_text)
             return []
