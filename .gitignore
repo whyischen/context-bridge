@@ -99,3 +99,5 @@ coverage/
 .vscode/
 .idea/
 .kiro/
+
+.agent-cache/

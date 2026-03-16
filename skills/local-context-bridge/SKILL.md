@@ -4,6 +4,8 @@
 
 **Local Document Search** is an OpenClaw Skill that provides local document indexing and search capabilities for AI agents. It enables intelligent searching through Word, Excel, PDF, and Markdown files without uploading documents to external services.
 
+**Important**: This Skill handles configuration and search operations only. File creation and workspace initialization are the responsibility of the ContextBridge Core, not the Skill.
+
 **Skill ID**: `local-context-bridge`  
 **Version**: 1.0.4  
 **Author**: whyischen  
@@ -38,11 +40,13 @@ pip install -r requirements.txt
 pip install cbridge-agent==0.1.5
 ```
 
-### 2. Initialize the Skill
+### 2. Initialize the Skill (Configuration Only)
 
 ```bash
 cbridge init
 ```
+
+**Note**: This configures the Skill but does NOT create files. File creation is handled by Core.
 
 ### 3. Add Directories to Monitor
 
@@ -76,10 +80,12 @@ cbridge start
 
 #### `initialize(auto_setup=False)`
 
-Initialize the skill.
+Initialize the skill (configuration only).
+
+**IMPORTANT**: This method only initializes the Skill. It does NOT create files or directories. File creation is the responsibility of Core, not the Skill.
 
 **Parameters:**
-- `auto_setup` (bool): Automatically setup if not configured (default: False)
+- `auto_setup` (bool): Automatically configure if not configured (default: False)
 
 **Returns:**
 ```json
@@ -103,7 +109,13 @@ skill = LocalContextBridgeSkill()
 result = skill.initialize(auto_setup=False)
 
 if result["status"] == "not_configured":
-    skill.setup_environment(mode='embedded')
+    # Configure the environment (no files created)
+    config_result = skill.setup_environment(mode='embedded')
+    
+    # If you want to create files, call Core's init_workspace() explicitly
+    if config_result["status"] == "success":
+        from core.config import init_workspace
+        init_workspace()  # This creates files and directories
 ```
 
 ---
@@ -166,7 +178,9 @@ Detect user environment and available services.
 
 #### `setup_environment(workspace_dir=None, mode='auto')`
 
-Setup ContextBridge environment with specified mode.
+Configure ContextBridge environment with specified mode (configuration only).
+
+**IMPORTANT**: This method only configures settings. It does NOT create files or directories. File creation is the responsibility of Core, not the Skill.
 
 **Parameters:**
 - `workspace_dir` (str): Custom workspace directory (optional)
@@ -180,6 +194,17 @@ Setup ContextBridge environment with specified mode.
   "message": "Environment setup completed",
   "config": {...}
 }
+```
+
+**Example:**
+```python
+# Configure the environment (no files created)
+result = skill.setup_environment(mode='embedded')
+
+# If you want to create files, call Core's init_workspace() explicitly
+if result["status"] == "success":
+    from core.config import init_workspace
+    init_workspace()  # This creates files and directories
 ```
 
 ---
@@ -305,6 +330,33 @@ Connects to existing QMD and OpenViking services.
 skill.setup_environment(mode='external')
 ```
 
+## Responsibility Separation: Skill vs Core
+
+### What the Skill Does
+
+- ✅ Configuration management (reading/writing config)
+- ✅ Environment detection (checking for available services)
+- ✅ Document search operations
+- ✅ Watch directory management
+- ✅ Status and metadata queries
+
+### What the Skill Does NOT Do
+
+- ❌ Create files or directories
+- ❌ Initialize workspace
+- ❌ Write logs
+- ❌ Manage file permissions
+
+### What Core Does
+
+- ✅ File and directory creation
+- ✅ Workspace initialization
+- ✅ Audit logging
+- ✅ Permission management
+- ✅ Document parsing and indexing
+
+**Important**: If you want to create files and initialize the workspace, you must explicitly call Core's `init_workspace()` function after configuring the Skill.
+
 ## Environment Variables (Optional)
 
 | Variable | Purpose | Default |
@@ -325,7 +377,13 @@ skill = LocalContextBridgeSkill()
 result = skill.initialize(auto_setup=False)
 
 if result["status"] == "not_configured":
-    skill.setup_environment(mode='embedded')
+    # Configure the environment (no files created)
+    config_result = skill.setup_environment(mode='embedded')
+    
+    # If you want to create files, call Core's init_workspace() explicitly
+    if config_result["status"] == "success":
+        from core.config import init_workspace
+        init_workspace()  # This creates files and directories
 
 # Search documents
 results = skill.search_documents("Python best practices", top_k=5)
@@ -346,7 +404,13 @@ skill = LocalContextBridgeSkill()
 result = skill.initialize(auto_setup=False)
 
 if result["status"] == "not_configured":
-    skill.setup_environment(mode='auto')
+    # Configure the environment (no files created)
+    config_result = skill.setup_environment(mode='auto')
+    
+    # If you want to create files, call Core's init_workspace() explicitly
+    if config_result["status"] == "success":
+        from core.config import init_workspace
+        init_workspace()  # This creates files and directories
 
 # Add directories to monitor
 skill.add_watch_directory('~/Documents/Projects')
@@ -373,10 +437,15 @@ if env["status"] == "success":
     
     if env_info["qmd_available"] and env_info["openviking_available"]:
         print("External services available - using external mode")
-        skill.setup_environment(mode='external')
+        config_result = skill.setup_environment(mode='external')
     else:
         print("Using embedded mode")
-        skill.setup_environment(mode='embedded')
+        config_result = skill.setup_environment(mode='embedded')
+    
+    # If you want to create files, call Core's init_workspace() explicitly
+    if config_result["status"] == "success":
+        from core.config import init_workspace
+        init_workspace()  # This creates files and directories
 ```
 
 ### Example 4: OpenClaw Integration
@@ -472,8 +541,13 @@ MIT License - See LICENSE file for details
 ## Changelog
 
 ### Version 1.0.4 (Current)
+- **BREAKING CHANGE**: Skill no longer creates files automatically
+  - `setup_environment()` now only configures settings
+  - File creation is the responsibility of Core, not the Skill
+  - Users must explicitly call `core.config.init_workspace()` to create files
 - Centralized version management: all version numbers now read from `version.py`
 - Simplified documentation: removed architecture and security docs (handled by ContextBridge core)
+- Updated all examples to show responsibility separation
 - Future version updates only require changing one file
 
 ### Version 1.0.3

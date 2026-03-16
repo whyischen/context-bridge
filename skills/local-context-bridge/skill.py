@@ -44,10 +44,13 @@ class LocalContextBridgeSkill:
 
     def initialize(self, auto_setup: bool = False) -> Dict[str, Any]:
         """
-        Initialize the skill.
+        Initialize the skill (configuration only).
+        
+        IMPORTANT: This method only initializes the Skill. It does NOT create files or directories.
+        File creation is the responsibility of Core, not the Skill.
         
         Args:
-            auto_setup: Automatically setup if not configured (default: False)
+            auto_setup: Automatically configure if not configured (default: False)
             
         Returns:
             Initialization result
@@ -59,7 +62,8 @@ class LocalContextBridgeSkill:
                 result = self.setup.auto_setup()
                 if result["status"] != "success":
                     return result
-                self.setup.initialize_workspace()
+                # NOTE: Skill does NOT call initialize_workspace() here.
+                # File creation is the responsibility of Core, not the Skill.
             elif not is_configured() and not auto_setup:
                 return {
                     "status": "not_configured",
@@ -169,14 +173,17 @@ class LocalContextBridgeSkill:
         mode: str = "auto"
     ) -> Dict[str, Any]:
         """
-        Setup ContextBridge environment.
+        Setup ContextBridge environment (configuration only).
+        
+        IMPORTANT: This method only configures settings. It does NOT create files or directories.
+        File creation is the responsibility of Core, not the Skill.
         
         Args:
             workspace_dir: Custom workspace directory
             mode: Setup mode ('auto', 'embedded', 'external')
             
         Returns:
-            Setup result
+            Setup result with configuration details
         """
         try:
             if mode == "auto":
@@ -207,8 +214,9 @@ class LocalContextBridgeSkill:
                     "message": f"Unknown setup mode: {mode}"
                 }
             
-            if result["status"] == "success":
-                self.setup.initialize_workspace()
+            # NOTE: Skill does NOT call initialize_workspace() here.
+            # File creation is the responsibility of Core, not the Skill.
+            # Users must explicitly call Core's init_workspace() if they want to create files.
             
             return result
         except Exception as e:
