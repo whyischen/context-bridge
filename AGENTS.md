@@ -21,6 +21,8 @@ context-bridge/
 
 ## Agent 临时文件管理
 
+非必要，不要创建临时文件/总结文件
+
 ### 临时文件目录
 ```
 .agent-cache/
