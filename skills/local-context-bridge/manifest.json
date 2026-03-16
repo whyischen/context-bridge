@@ -1,0 +1,101 @@
+{
+  "name": "local-context-bridge",
+  "displayName": "Local ContextBridge",
+  "id": "local-context-bridge",
+  "version": "1.0.2",
+  "description": "Local document search and context management for AI agents. Search Word, Excel, PDF files instantly without uploading.",
+  "author": "whyischen",
+  "license": "MIT",
+  "main": "skill.py",
+  "keywords": ["contextbridge", "local", "documents", "search", "knowledge-base"],
+  "capabilities": [
+    "search_documents",
+    "setup_environment",
+    "detect_environment",
+    "manage_watch_dirs"
+  ],
+  "permissions": [
+    {
+      "name": "file_read",
+      "description": "Read document files for indexing and search",
+      "scope": "User-specified watch directories"
+    },
+    {
+      "name": "file_write",
+      "description": "Write configuration and cache files to ~/.cbridge/ directory only",
+      "scope": "~/.cbridge/ directory"
+    },
+    {
+      "name": "local_storage",
+      "description": "Store configuration, cache, and document index locally",
+      "scope": "~/.cbridge/ directory"
+    },
+    {
+      "name": "network_access",
+      "description": "Probe local network endpoints (localhost:9090, localhost:8080) to detect existing services",
+      "scope": "Local network only (127.0.0.1)"
+    }
+  ],
+  "dependencies": {
+    "python": ">=3.8",
+    "cbridge-agent": {
+      "version": "0.1.5",
+      "required": true,
+      "installMethod": "manual",
+      "description": "Must be installed manually before using this skill: pip install cbridge-agent==0.1.5"
+    }
+  },
+  "requiredEnvVars": [
+    {
+      "name": "CBRIDGE_WORKSPACE",
+      "description": "Custom workspace directory for ContextBridge (optional)",
+      "required": false
+    },
+    {
+      "name": "CBRIDGE_MODE",
+      "description": "Deployment mode: 'embedded' or 'external' (optional)",
+      "required": false
+    },
+    {
+      "name": "QMD_ENDPOINT",
+      "description": "QMD service endpoint for external mode (optional)",
+      "required": false
+    },
+    {
+      "name": "OPENVIKING_ENDPOINT",
+      "description": "OpenViking service endpoint for external mode (optional)",
+      "required": false
+    }
+  ],
+  "configFiles": [
+    {
+      "path": "~/.cbridge/config.yaml",
+      "description": "ContextBridge configuration file"
+    },
+    {
+      "path": "~/.cbridge/setup.log",
+      "description": "Setup and initialization audit log"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/whyischen/local-context-bridge-skill"
+  },
+  "homepage": "https://github.com/whyischen/local-context-bridge-skill",
+  "bugs": {
+    "url": "https://github.com/whyischen/local-context-bridge-skill/issues"
+  },
+  "configuration": {
+    "mode": {
+      "type": "string",
+      "enum": ["embedded", "external"],
+      "default": "embedded",
+      "description": "Deployment mode: embedded (built-in) or external (connect to existing services)"
+    },
+    "auto_setup": {
+      "type": "boolean",
+      "default": false,
+      "description": "Automatically setup and initialize on first use. SECURITY: Set to false by default to require explicit user approval."
+    }
+  }
+}
