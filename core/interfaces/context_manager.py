@@ -24,3 +24,10 @@ class IContextManager(ABC):
         执行高级检索策略（如 OpenViking 的目录递归检索）
         """
         pass
+
+    @abstractmethod
+    def get_all_filenames(self) -> List[str]:
+        """
+        获取所有已索引的文件名
+        """
+        pass

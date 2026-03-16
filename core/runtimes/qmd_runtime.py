@@ -10,7 +10,7 @@ console = Console(stderr=True)
 class QMDRuntime(ISearchRuntime):
     def __init__(self, config):
         self.mode = config.get("mode", "embedded")
-        self.endpoint = config.get("qmd", {}).get("endpoint", "http://localhost:9090")
+        self.endpoint = config.get("qmd", {}).get("endpoint", "http://localhost:9791")
         self.collection_name = config.get("qmd", {}).get("collection", "cb_documents")
         
         if self.mode == "embedded":
@@ -37,7 +37,7 @@ class QMDRuntime(ISearchRuntime):
             # 模拟 QMD 的 upsert
             # ChromaDB 可以自动生成 embedding，这里我们简化处理，传入 text
             text = payload.pop("text", "")
-            self.collection.add(
+            self.collection.upsert(
                 documents=[text],
                 metadatas=[payload],
                 ids=[doc_id]
@@ -75,4 +75,16 @@ class QMDRuntime(ISearchRuntime):
             return formatted_results
         else:
             console.print(t("qmd_search_ext", endpoint=self.endpoint, collection=collection_name, query=query_text))
+            return []
+
+    def get_all_metadatas(self, collection_name: str) -> List[Dict[str, Any]]:
+        if self.mode == "embedded":
+            try:
+                results = self.collection.get(include=["metadatas"])
+                if results and "metadatas" in results and results["metadatas"]:
+                    return [meta for meta in results["metadatas"] if meta]
+            except Exception as e:
+                logger.error(f"Error getting metadatas from ChromaDB: {e}")
+            return []
+        else:
             return []

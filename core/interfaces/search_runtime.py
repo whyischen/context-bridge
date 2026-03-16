@@ -16,3 +16,8 @@ class ISearchRuntime(ABC):
     def hybrid_search(self, collection_name: str, query_text: str, top_k: int = 5) -> List[Dict[str, Any]]:
         """底层检索：执行向量与关键词的混合检索"""
         pass
+
+    @abstractmethod
+    def get_all_metadatas(self, collection_name: str) -> List[Dict[str, Any]]:
+        """获取所有文档的元数据"""
+        pass

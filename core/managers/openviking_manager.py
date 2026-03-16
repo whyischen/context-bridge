@@ -14,7 +14,7 @@ class OpenVikingManager(IContextManager):
         self.search_runtime = search_runtime
         self.mode = config.get("mode", "embedded")
         self.mount_path = config.get("openviking", {}).get("mount_path", "viking://contextbridge/")
-        self.endpoint = config.get("openviking", {}).get("endpoint", "http://localhost:8080")
+        self.endpoint = config.get("openviking", {}).get("endpoint", "http://localhost:9780")
         self.collection_name = config.get("qmd", {}).get("collection", "cb_documents")
         
         if self.mode == "embedded":
@@ -41,7 +41,9 @@ class OpenVikingManager(IContextManager):
             l1_overview = self._generate_l1_overview(content)
             
             # 2. 存入底层检索运行时 (QMD)
-            doc_id = str(uuid.uuid4())
+            # Use deterministic doc_id based on URI to avoid duplicates on update
+            import hashlib
+            doc_id = hashlib.md5(uri.encode('utf-8')).hexdigest()
             payload = {
                 "uri": uri,
                 "filename": filename,
@@ -96,4 +98,11 @@ class OpenVikingManager(IContextManager):
             return final_context
         else:
             console.print(t("ov_ret_ext", endpoint=self.endpoint, query=query))
+            return []
+
+    def get_all_filenames(self) -> List[str]:
+        if self.mode == "embedded":
+            metadatas = self.search_runtime.get_all_metadatas(self.collection_name)
+            return [meta.get("filename") for meta in metadatas if "filename" in meta]
+        else:
             return []

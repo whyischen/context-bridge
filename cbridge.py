@@ -33,9 +33,9 @@ def init():
         config_data["watch_dirs"] = existing_watch_dirs
     
     if mode == 'external':
-        ov_endpoint = click.prompt(t("ov_endpoint"), default="http://localhost:8080")
+        ov_endpoint = click.prompt(t("ov_endpoint"), default="http://localhost:9780")
         ov_mount = click.prompt(t("ov_mount"), default="viking://contextbridge/")
-        qmd_endpoint = click.prompt(t("qmd_endpoint"), default="http://localhost:9090")
+        qmd_endpoint = click.prompt(t("qmd_endpoint"), default="http://localhost:9791")
         qmd_collection = click.prompt(t("qmd_collection"), default="cb_documents")
         
         config_data["openviking"] = {
@@ -92,6 +92,40 @@ def start():
     init_workspace()
     console.print(t("start_engine"))
     start_watching()
+
+@cli.command(help=t("serve_desc"))
+@click.option('--port', default=9790, help='Port to run the API server on')
+@click.option('--host', default='127.0.0.1', help='Host to bind the API server to')
+def serve(port, host):
+    import uvicorn
+    import socket
+    
+    # Fallback mechanism for port conflicts
+    original_port = port
+    max_retries = 10
+    available_port = port
+    
+    for p in range(port, port + max_retries):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind((host, p))
+                available_port = p
+                break
+            except OSError:
+                continue
+                
+    if available_port != original_port:
+        console.print(f"[yellow]⚠️ Port {original_port} is in use. Falling back to port {available_port}.[/yellow]")
+        port = available_port
+
+    console.print(t("serve_start", host=host, port=port))
+    init_workspace()
+    # Start the watcher in the background
+    import threading
+    watcher_thread = threading.Thread(target=start_watching, daemon=True)
+    watcher_thread.start()
+    
+    uvicorn.run("core.api_server:app", host=host, port=port, log_level="info")
 
 @cli.command(help=t("search_desc"))
 @click.argument('query')

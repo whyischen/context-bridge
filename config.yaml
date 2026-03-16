@@ -3,11 +3,11 @@ mode: "embedded"  # embedded (自带电池) | external (接入现有)
 workspace_dir: "~/ContextBridge_Workspace"
 
 openviking:
-  endpoint: "http://localhost:8080"
+  endpoint: "http://localhost:9780"
   mount_path: "viking://contextbridge/"
 
 qmd:
-  endpoint: "http://localhost:9090"
+  endpoint: "http://localhost:9791"
   collection: "cb_documents"
 
 mcp:

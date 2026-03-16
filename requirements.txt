@@ -7,3 +7,5 @@ PyYAML
 click
 tqdm
 docling
+fastapi
+uvicorn

@@ -96,13 +96,13 @@ def auto_configure(workspace_dir=None):
     
     if services.get("qmd_available"):
         config_data["qmd"] = {
-            "endpoint": services.get("qmd_endpoint", "http://localhost:9090"),
+            "endpoint": services.get("qmd_endpoint", "http://localhost:9791"),
             "collection": "contextbridge_docs"
         }
     
     if services.get("openviking_available"):
         config_data["openviking"] = {
-            "endpoint": services.get("openviking_endpoint", "http://localhost:8080"),
+            "endpoint": services.get("openviking_endpoint", "http://localhost:9780"),
             "mount_path": "viking://contextbridge/"
         }
     
@@ -150,5 +150,7 @@ def init_workspace():
         except Exception as e:
             pass
 
-    from core.i18n import i18n
-    i18n.print("workspace_initialized", workspace=WORKSPACE_DIR, mode=CONFIG.get('mode', 'embedded'))
+    from core.i18n import t
+    from rich.console import Console
+    console = Console(stderr=True)
+    console.print(t("workspace_init", dir=WORKSPACE_DIR, mode=CONFIG.get('mode', 'embedded')))
