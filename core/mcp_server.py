@@ -6,7 +6,7 @@ from core.factories import initialize_system
 from core.config import init_workspace
 
 app = Server("context-bridge")
-context_manager = None
+context_manager = initialize_system()
 
 @app.list_tools()
 async def list_tools() -> list[Tool]:
@@ -34,10 +34,6 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         if not query:
             return [TextContent(type="text", text="Error: query is required.")]
         
-        global context_manager
-        if context_manager is None:
-            context_manager = initialize_system()
-            
         results = context_manager.recursive_retrieve(query)
         
         if not results:

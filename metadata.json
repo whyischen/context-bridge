@@ -1,5 +1,5 @@
 {
-  "name": "Local Document Search (Privacy-First)",
-  "description": "Local document search, privacy-first. Index and search Word, Excel, PDF, Markdown files without uploading to external services.",
+  "name": "ContextBridge",
+  "description": "The All-in-One Local Memory Bridge for AI Agents. Feed your local AI Agents with Office documents.",
   "requestFramePermissions": []
 }

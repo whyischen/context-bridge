@@ -6,3 +6,4 @@ pydantic
 PyYAML
 click
 tqdm
+docling

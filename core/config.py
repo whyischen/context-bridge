@@ -145,9 +145,7 @@ def init_workspace():
         try:
             from core.factories import initialize_system
             cm = initialize_system()
-            parsed_path = PARSED_DOCS_DIR / f"{demo_doc.stem}.md"
-            with open(parsed_path, "w", encoding="utf-8") as pf:
-                pf.write(demo_content)
+            # Demo doc is .md, no need to copy to parsed_docs
             cm.write_context(demo_doc.name, demo_content, level="L2")
         except Exception as e:
             pass

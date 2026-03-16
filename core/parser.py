@@ -1,48 +1,54 @@
 #!/usr/bin/env python3
 """
-Document Parser for ContextBridge
-
-Supports:
-- Text files (.md, .txt): Direct read
-- Office files (.docx, .xlsx, .pptx): MarkItDown conversion
-- PDF files (.pdf): MarkItDown with optional OCR support
+Document Parser Wrapper for ContextBridge
 """
 
-from markitdown import MarkItDown
 from pathlib import Path
 import logging
 import os
+from typing import Optional
+
+from core.parsers.markitdown_parser import MarkItDownParser
+from core.parsers.docling_parser import DoclingParser
+from core.parsers.composite_parser import CompositeParser
+from core.interfaces.parser import BaseParser
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Global MarkItDown instance for reuse (avoids re-initialization overhead)
-_markitdown_instance = None
+# Global parser instance
+_current_parser: Optional[BaseParser] = None
 
-def get_markitdown() -> MarkItDown:
-    """Get or create MarkItDown instance (singleton pattern)"""
-    global _markitdown_instance
-    if _markitdown_instance is None:
-        _markitdown_instance = MarkItDown()
-    return _markitdown_instance
+def get_parser() -> BaseParser:
+    """Get the configured parser instance (singleton)"""
+    global _current_parser
+    if _current_parser is None:
+        # 1. Initialize base parsers
+        mid_parser = MarkItDownParser()
+        
+        # 2. Create composite router
+        composite = CompositeParser(default_parser=mid_parser)
+        
+        # 3. Register specialized parsers
+        try:
+            docling_parser = DoclingParser()
+            composite.register_parser(docling_parser, {'.pdf'})
+            logger.info("Docling parser registered for PDF support")
+        except ImportError:
+            logger.warning("Docling not installed, falling back to MarkItDown for PDFs")
+        except Exception as e:
+            logger.error(f"Failed to initialize Docling: {e}")
+            
+        _current_parser = composite
+    return _current_parser
 
-# Supported file extensions
-SUPPORTED_EXTENSIONS = {
-    '.txt': 'text',
-    '.md': 'text',
-    '.docx': 'office',
-    '.xlsx': 'office',
-    '.pptx': 'office',
-    '.pdf': 'pdf',
-}
+def set_parser(parser: BaseParser):
+    """Allow swapping the parser at runtime"""
+    global _current_parser
+    _current_parser = parser
 
 def check_file_access(file_path: Path) -> tuple[bool, str]:
-    """
-    Check if file is accessible
-    
-    Returns:
-        (is_accessible, error_message)
-    """
+    """Check if file is accessible and within size limits"""
     if not file_path.exists():
         return False, f"File not found: {file_path}"
     
@@ -60,115 +66,46 @@ def check_file_access(file_path: Path) -> tuple[bool, str]:
     
     return True, ""
 
-def parse_text_file(file_path: Path) -> str:
-    """Parse plain text files (.txt, .md)"""
-    logger.info(f"Reading text file: {file_path}")
-    try:
-        # Try UTF-8 first, fallback to other encodings
-        encodings = ['utf-8', 'gbk', 'gb2312', 'latin-1']
-        for encoding in encodings:
-            try:
-                content = file_path.read_text(encoding=encoding)
-                logger.debug(f"Successfully read {file_path} with {encoding} encoding")
-                return content
-            except UnicodeDecodeError:
-                continue
-        
-        logger.error(f"Failed to decode {file_path} with common encodings")
-        return ""
-    except PermissionError as e:
-        logger.error(f"Permission denied reading {file_path}: {e}")
-        return ""
-    except Exception as e:
-        logger.error(f"Failed to read text file {file_path}: {e}")
-        return ""
-
-def parse_office_file(file_path: Path, md: MarkItDown) -> str:
-    """Parse Office files (.docx, .xlsx, .pptx)"""
-    logger.info(f"Parsing Office document: {file_path}")
-    try:
-        result = md.convert(str(file_path))
-        content = result.text_content or ""
-        
-        if not content:
-            logger.warning(f"Office file {file_path} returned empty content")
-        
-        return content
-    except PermissionError as e:
-        logger.error(f"Permission denied reading {file_path}: {e}")
-        return ""
-    except Exception as e:
-        logger.error(f"Failed to parse Office file {file_path}: {e}")
-        return ""
-
-def parse_pdf_file(file_path: Path, md: MarkItDown, use_ocr: bool = True) -> str:
-    """
-    Parse PDF files with optional OCR support
-    
-    Args:
-        file_path: Path to PDF file
-        md: MarkItDown instance
-        use_ocr: Enable OCR for scanned PDFs (default: True)
-    
-    Returns:
-        Extracted text content
-    """
-    logger.info(f"Parsing PDF: {file_path} (OCR: {use_ocr})")
-    try:
-        # MarkItDown handles both text-based and image-based PDFs
-        # OCR is automatically applied when needed if dependencies are available
-        result = md.convert(str(file_path), use_ocr=use_ocr)
-        content = result.text_content or ""
-        
-        if not content:
-            logger.warning(f"PDF {file_path} returned empty content, may be image-only without OCR")
-        
-        return content
-    except PermissionError as e:
-        logger.error(f"Permission denied reading {file_path}: {e}")
-        return ""
-    except Exception as e:
-        logger.error(f"Failed to parse PDF {file_path}: {e}")
-        return ""
-
 def parse_document(file_path: Path, use_ocr: bool = True) -> str:
     """
-    Parse document based on file type
-    
-    Args:
-        file_path: Path to the file
-        use_ocr: Enable OCR for PDF files (default: True)
-    
-    Returns:
-        Extracted text content as markdown
+    Parse document using the configured parser.
+    Gracefully skips unsupported or inaccessible files.
     """
-    # Check file accessibility
+    # 1. Check file accessibility
     is_accessible, error_msg = check_file_access(file_path)
     if not is_accessible:
-        logger.error(error_msg)
+        logger.warning(f"Skipping file: {error_msg}")
         return ""
     
+    # 2. Get the parser
+    parser = get_parser()
+    supported_exts = parser.get_supported_extensions()
+    
+    # 3. Check if extension is supported
     suffix = file_path.suffix.lower()
-    
-    if suffix not in SUPPORTED_EXTENSIONS:
-        logger.warning(f"Unsupported file type: {suffix}")
+    if suffix not in supported_exts:
+        # Silently skip or log a debug message for unsupported types
+        # This fulfills the "skip unsupported files without affecting main flow" requirement
+        logger.debug(f"Skipping unsupported file type: {suffix} ({file_path.name})")
         return ""
     
-    file_type = SUPPORTED_EXTENSIONS[suffix]
-    
+    # 4. Perform parsing
     try:
-        # Reuse MarkItDown instance for better performance
-        md = get_markitdown()
-        
-        if file_type == 'text':
-            return parse_text_file(file_path)
-        elif file_type == 'office':
-            return parse_office_file(file_path, md)
-        elif file_type == 'pdf':
-            return parse_pdf_file(file_path, md, use_ocr=use_ocr)
-        else:
-            logger.error(f"Unknown file type: {file_type}")
-            return ""
+        content = parser.parse(file_path, use_ocr=use_ocr)
+        if not content:
+            logger.warning(f"Parser returned empty content for: {file_path.name}")
+        return content
     except Exception as e:
-        logger.error(f"Unexpected error parsing {file_path}: {e}")
+        # Catch all exceptions to ensure main flow is not interrupted
+        logger.error(f"Error parsing {file_path.name}: {e}")
         return ""
+
+# For backward compatibility, we provide a property-like access
+class _SupportedExtensionsProxy(set):
+    def __contains__(self, item):
+        return item in get_parser().get_supported_extensions()
+    
+    def __iter__(self):
+        return iter(get_parser().get_supported_extensions())
+
+SUPPORTED_EXTENSIONS = _SupportedExtensionsProxy()

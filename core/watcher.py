@@ -4,7 +4,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from pathlib import Path
 from core.config import RAW_DOCS_DIR, PARSED_DOCS_DIR, get_watch_dirs
-from core.parser import parse_document
+from core.parser import parse_document, SUPPORTED_EXTENSIONS
 from core.factories import initialize_system
 from tqdm import tqdm
 from core.i18n import i18n
@@ -15,7 +15,7 @@ class DocumentHandler(FileSystemEventHandler):
 
     def process_file(self, file_path, event_type="created"):
         path = Path(file_path)
-        if path.suffix.lower() in ['.docx', '.xlsx', '.pdf', '.pptx', '.md', '.txt']:
+        if path.suffix.lower() in SUPPORTED_EXTENSIONS:
             if event_type == "deleted":
                 i18n.print("file_deleted", name=path.name)
                 self.context_manager.delete_context(path.name)
@@ -24,11 +24,13 @@ class DocumentHandler(FileSystemEventHandler):
             i18n.print("file_event", event_type=event_type, name=path.name)
             content = parse_document(path)
             if content:
-                # Save parsed markdown
-                parsed_path = PARSED_DOCS_DIR / f"{path.stem}.md"
-                with open(parsed_path, "w", encoding="utf-8") as f:
-                    f.write(content)
-                # 通过上下文管理器写入数据 (如 OpenViking)
+                # Only save to parsed_docs if conversion was needed (not .md or .txt)
+                if path.suffix.lower() not in ['.md', '.txt']:
+                    parsed_path = PARSED_DOCS_DIR / f"{path.stem}.md"
+                    with open(parsed_path, "w", encoding="utf-8") as f:
+                        f.write(content)
+                
+                # Always write to context manager (indexing)
                 self.context_manager.write_context(path.name, content, level="L2")
 
     def on_created(self, event):
@@ -52,7 +54,7 @@ def index_all():
         for root, _, files in os.walk(d):
             for f in files:
                 path = Path(root) / f
-                if path.suffix.lower() in ['.docx', '.xlsx', '.pdf', '.pptx', '.md', '.txt']:
+                if path.suffix.lower() in SUPPORTED_EXTENSIONS:
                     all_files.append(path)
                     
     if not all_files:
@@ -63,9 +65,12 @@ def index_all():
     for path in tqdm(all_files, desc=i18n.get("indexing_files"), unit="file"):
         content = parse_document(path)
         if content:
-            parsed_path = PARSED_DOCS_DIR / f"{path.stem}.md"
-            with open(parsed_path, "w", encoding="utf-8") as f:
-                f.write(content)
+            # Only save to parsed_docs if conversion was needed (not .md or .txt)
+            if path.suffix.lower() not in ['.md', '.txt']:
+                parsed_path = PARSED_DOCS_DIR / f"{path.stem}.md"
+                with open(parsed_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+            
             context_manager.write_context(path.name, content, level="L2")
     i18n.print("index_complete")
 

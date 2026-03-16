@@ -1,6 +1,14 @@
-lang: zh
-mode: embedded
-watch_dirs:
-- /Users/ekko/.context-bridge/raw_docs
-- /Users/ekko/Documents/SHU/bt
-workspace_dir: ~/.context-bridge
+mode: "embedded"  # embedded (自带电池) | external (接入现有)
+
+workspace_dir: "~/ContextBridge_Workspace"
+
+openviking:
+  endpoint: "http://localhost:8080"
+  mount_path: "viking://contextbridge/"
+
+qmd:
+  endpoint: "http://localhost:9090"
+  collection: "cb_documents"
+
+mcp:
+  port: 4733

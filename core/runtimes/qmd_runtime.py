@@ -1,6 +1,11 @@
+import logging
 from typing import List, Dict, Any
+from rich.console import Console
 from core.interfaces.search_runtime import ISearchRuntime
-from core.i18n import i18n
+from core.i18n import t
+
+logger = logging.getLogger(__name__)
+console = Console(stderr=True)
 
 class QMDRuntime(ISearchRuntime):
     def __init__(self, config):
@@ -9,7 +14,10 @@ class QMDRuntime(ISearchRuntime):
         self.collection_name = config.get("qmd", {}).get("collection", "cb_documents")
         
         if self.mode == "embedded":
-            i18n.print("qmd_init_embedded")
+            console.print(t("qmd_init_embed"))
+            from core.utils.model_downloader import ensure_chroma_model
+            ensure_chroma_model()
+            
             import chromadb
             import os
             from pathlib import Path
@@ -21,7 +29,7 @@ class QMDRuntime(ISearchRuntime):
             self.client = chromadb.PersistentClient(path=str(db_path))
             self.collection = self.client.get_or_create_collection(name=self.collection_name)
         else:
-            i18n.print("qmd_init_external", endpoint=self.endpoint, collection=self.collection_name)
+            console.print(t("qmd_init_ext", endpoint=self.endpoint, collection=self.collection_name))
             self.client = None # 实际场景中这里会初始化 QMD SDK
 
     def upsert(self, collection_name: str, doc_id: str, vector: List[float], payload: Dict[str, Any]) -> bool:
@@ -36,7 +44,7 @@ class QMDRuntime(ISearchRuntime):
             )
             return True
         else:
-            i18n.print("qmd_write_ext", doc_id=doc_id)
+            console.print(t("qmd_write_ext", endpoint=self.endpoint, collection=collection_name, doc_id=doc_id))
             return True
 
     def delete_by_uri(self, collection_name: str, uri: str) -> bool:
@@ -45,7 +53,7 @@ class QMDRuntime(ISearchRuntime):
             self.collection.delete(where={"uri": uri})
             return True
         else:
-            i18n.print("qmd_del_ext", uri=uri)
+            console.print(t("qmd_del_ext", endpoint=self.endpoint, collection=collection_name, uri=uri))
             return True
 
     def hybrid_search(self, collection_name: str, query_text: str, top_k: int = 5) -> List[Dict[str, Any]]:
@@ -66,5 +74,5 @@ class QMDRuntime(ISearchRuntime):
                     })
             return formatted_results
         else:
-            i18n.print("qmd_ret_ext", query=query_text)
+            console.print(t("qmd_search_ext", endpoint=self.endpoint, collection=collection_name, query=query_text))
             return []
