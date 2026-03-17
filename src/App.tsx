@@ -8,18 +8,20 @@ import { APP_CONTENT } from './constants/content';
 
 export default function App() {
   const getInitialLang = (): 'en' | 'zh' => {
-    const browserLang = navigator.language.toLowerCase();
-    if (browserLang.startsWith('zh')) return 'zh';
-    return 'en';
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('cbridge-lang');
+      if (saved === 'en' || saved === 'zh') return saved;
+    }
+    return 'en'; // Default to English
   };
 
   const [lang, setLang] = useState<'en' | 'zh'>(getInitialLang());
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('cbridge-theme');
-      return (saved as 'light' | 'dark' | 'system') || 'system';
+      return (saved as 'light' | 'dark' | 'system') || 'dark'; // Default to dark mode
     }
-    return 'system';
+    return 'dark';
   });
   const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [copied, setCopied] = useState(false);
