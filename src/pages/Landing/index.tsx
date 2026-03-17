@@ -65,10 +65,10 @@ export default function LandingPage({ lang, t, copied, copyInstallCmd }: Landing
 
         <motion.h1
           {...fadeUp(0.08)}
-          className="max-w-3xl text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] text-slate-900 dark:text-white mb-5"
+          className="max-w-3xl text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.25] text-slate-900 dark:text-white mb-5 [font-family:'Noto_Sans_SC',sans-serif] font-black"
         >
           {t.heroTitle}
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500">
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-cyan-400">
             {t.heroHighlight}
           </span>
           {t.heroSuffix}

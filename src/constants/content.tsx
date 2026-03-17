@@ -7,8 +7,8 @@ export const APP_CONTENT = {
     badgeText: "Open Source · MIT License",
     heroTitle: "Give ",
     heroHighlight: "AI Agents",
-    heroSuffix: " Instant Access to Your Local Documents",
-    subtitle: "A lightweight Knowledge Base plugin for openclaw, Cursor and other AI agents. Let your AI assistants directly read and understand your local Word, Excel, and PDF files.",
+    heroSuffix: <><br />Effortless Access to Your Local Documents</>,
+    subtitle: "A lightweight Knowledge Base plugin for Openclaw, Cursor and other AI agents. Let your AI assistants directly read and understand your local Word, Excel, and PDF files.",
     docsSection: "Documentation",
     docCards: [
       {
@@ -69,7 +69,7 @@ export const APP_CONTENT = {
     badgeText: "开源 · MIT 协议",
     heroTitle: "让 ",
     heroHighlight: "AI 智能体",
-    heroSuffix: <> 瞬间读懂你的<span className="whitespace-nowrap">本地文档</span></>,
+    heroSuffix: <><br />轻松读懂你的本地文档</>,
     subtitle: "专为 Openclaw、Cursor 等智能体设计的极速知识库外挂。让你的 AI 助手直接读取、理解本地的 Word、Excel 和 PDF 文件，无需上传，隐私安全。",
     docsSection: "文档中心",
     docCards: [
