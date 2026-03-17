@@ -271,7 +271,29 @@ def serve(port, host, foreground):
     import uvicorn
     import socket
     import os
+    import signal
     from core.utils.logger import setup_logger
+    
+    # Step 1: Stop any running serve daemon
+    pid_file = Path.home() / ".cbridge" / "cbridge.pid"
+    
+    if pid_file.exists():
+        try:
+            pid = int(pid_file.read_text().strip())
+            if sys.platform == "win32":
+                import subprocess
+                subprocess.run(["taskkill", "/PID", str(pid), "/F"], check=True, capture_output=True)
+            else:
+                os.kill(pid, signal.SIGTERM)
+            pid_file.unlink()
+            console.print(t("serve_stopped_existing", pid=pid))
+        except (ProcessLookupError, subprocess.CalledProcessError, ValueError):
+            # Process not found, just clean up the PID file
+            pid_file.unlink()
+            console.print(t("serve_cleaned_stale_pid"))
+        except PermissionError:
+            console.print(t("serve_stop_permission_error"))
+            sys.exit(1)
     
     # Fallback mechanism for port conflicts
     original_port = port
