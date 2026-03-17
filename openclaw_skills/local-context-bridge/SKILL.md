@@ -6,16 +6,66 @@ metadata: { "openclaw": { "emoji": "🌉", "requires": { "bins": ["curl"] } } }
 
 # Local ContextBridge Knowledge Base
 
-You are equipped with ContextBridge, a powerful local search engine running at `http://127.0.0.1:9790`. It grants you access to the user's private documents (Word, Excel, PDF, Markdown, etc.).
+This skill allows OpenClaw to search and retrieve information from your local documents (PDF, Word, Excel, Markdown, etc.) using the ContextBridge API.
+
+## 🛠️ PREREQUISITES & INSTALLATION
+
+If you haven't installed the ContextBridge software on your machine yet, follow these steps first:
+
+### 1. Install ContextBridge
+Open your terminal and run:
+```bash
+pip install cbridge-agent
+```
+
+### 2. Initialize & Add Documents
+Initialize your workspace and tell ContextBridge which folders to index:
+```bash
+cbridge init
+cbridge watch add /path/to/your/documents
+```
+
+### 3. Start the API Service
+ContextBridge must be running in the background to serve requests:
+```bash
+# Start both the file watcher and the API server
+cbridge start
+```
+*The API server runs at `http://127.0.0.1:9790` by default.*
+
+---
+
+## 🧠 HOW IT WORKS (For New Users)
+
+ContextBridge acts as a "Semantic Bridge" between your files and OpenClaw:
+
+1.  **Local Indexing**: When you add a folder, ContextBridge scans your documents (PDF, Docx, etc.) and breaks them into small, manageable text chunks.
+2.  **Vectorization**: Using a **local** AI embedding model, it converts these chunks into mathematical vectors that represent their *meaning*.
+3.  **Semantic Search**: When OpenClaw asks a question, it doesn't just look for exact words. It uses the API to find the most *semantically relevant* chunks from your library.
+4.  **100% Private**: All parsing, embedding, and searching happen **entirely on your local machine**. Your private data is never uploaded to any cloud service.
+
+---
 
 ## WHEN TO USE THIS SKILL (Trigger Scenarios)
 
-You MUST use your `exec` or `bash` tool to query the ContextBridge API whenever the user's request falls into any of these 4 categories:
+**DIRECTIVE**: If the user's request involves any information that is NOT general public knowledge, you MUST query ContextBridge before answering. Do NOT hallucinate or say "I don't have access" without trying a search first.
 
-1. **Information Retrieval (Q&A)**: The user asks for specific facts, historical data, or project details that are not general world knowledge (e.g., "What was our Q3 revenue?", "Find the meeting minutes from last Tuesday").
-2. **Document Auditing & Compliance**: The user asks you to review, verify, or audit a document/text. **CRITICAL**: You must first search for local "policies", "guidelines", "laws", or "rules" to establish the review criteria before answering.
-3. **Contextual Drafting**: The user asks you to write an email, proposal, or report based on past context (e.g., "Draft a proposal using our standard company template", "Write an email based on the product specs").
-4. **Troubleshooting & SOPs**: The user asks how to fix an internal error or follow an internal process (e.g., "How do I deploy the backend?", "What is the onboarding process?").
+### 1. Deep Fact Retrieval (Private Knowledge)
+Trigger this when the user asks for specific numbers, names, or facts buried in their local files.
+- *Examples*: "What was the total budget for the 2024 marketing campaign?", "Who was the lead engineer for Project X?", "Find the summary of the meeting from last Friday."
+
+### 2. Policy-Based Auditing & Compliance
+Trigger this when you are asked to review, verify, or check a document. 
+- **CRITICAL**: You must first search for local "policies", "guidelines", "SOPs", or "standards" to establish the ground truth before performing the audit.
+- *Examples*: "Does this contract follow our standard procurement policy?", "Review this PR based on our internal coding standards."
+
+### 3. Contextual Drafting (Style & Templates)
+Trigger this when the user wants to write something that should match a previous style or use a specific local template.
+- *Examples*: "Draft a project proposal using our standard company template", "Write a follow-up email in the same tone as my previous client communications."
+
+### 4. Technical Support & Internal Processes
+Trigger this for "How-to" questions regarding internal tools, deployment, or onboarding.
+- *Examples*: "How do I set up the local development environment?", "What are the steps for the employee onboarding process?", "How do we handle database migrations?"
 
 ## SEARCH STRATEGY (Best Practices)
 
