@@ -1,12 +1,8 @@
 @import "tailwindcss";
+
 @plugin "@tailwindcss/typography";
 
 @variant dark (&:where(.dark, .dark *));
-
-/* Font imports */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-@import url('https://api.fontshare.com/v2/css?f[]=clash-display@600,700&display=swap');
-@import url('https://api.fontshare.com/v2/css?f[]=aeonik@400,500,600,700,800,900&display=swap');
 
 /* Performance optimizations */
 @layer base {
