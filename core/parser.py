@@ -57,6 +57,8 @@ def set_parser(parser: BaseParser):
 
 def check_file_access(file_path: Path) -> tuple[bool, str]:
     """Check if file is accessible and within size limits"""
+    from core.config import CONFIG
+    
     if not file_path.exists():
         return False, f"File not found: {file_path}"
     
@@ -66,11 +68,13 @@ def check_file_access(file_path: Path) -> tuple[bool, str]:
     if not os.access(file_path, os.R_OK):
         return False, f"No read permission: {file_path}"
     
-    # Check file size (limit to 100MB)
-    max_size = 100 * 1024 * 1024  # 100MB
+    # Check file size (use config value, default 50MB)
+    watcher_config = CONFIG.get("watcher", {})
+    max_file_size_mb = watcher_config.get("max_file_size_mb", 50)
+    max_size = max_file_size_mb * 1024 * 1024
     file_size = file_path.stat().st_size
     if file_size > max_size:
-        return False, f"File too large ({file_size / 1024 / 1024:.1f}MB > {max_size / 1024 / 1024:.0f}MB limit)"
+        return False, f"File too large ({file_size / 1024 / 1024:.1f}MB > {max_file_size_mb}MB limit)"
     
     return True, ""
 
