@@ -2,6 +2,7 @@ import time
 import os
 import queue
 import threading
+import re
 from watchdog.observers.polling import PollingObserver
 from watchdog.events import FileSystemEventHandler
 from pathlib import Path
@@ -16,19 +17,25 @@ from core.utils.logger import setup_logger
 console = Console(stderr=True)
 logger = setup_logger("cbridge-watcher")
 
+def strip_rich_tags(text):
+    """移除 Rich 颜色标记，用于日志输出"""
+    # 移除 [xxx] 和 [/xxx] 标记（支持空格，如 [bold cyan]）
+    return re.sub(r'\[/?[a-zA-Z0-9_ ]+\]', '', text)
+
 def log_and_print(message, level="info"):
     """统一的日志输出函数：既显示在控制台也记录到日志文件"""
-    # 记录到日志文件
+    # 记录到日志文件（移除 Rich 颜色标记）
+    log_message = strip_rich_tags(message)
     if level == "info":
-        logger.info(message)
+        logger.info(log_message)
     elif level == "error":
-        logger.error(message)
+        logger.error(log_message)
     elif level == "warning":
-        logger.warning(message)
+        logger.warning(log_message)
     elif level == "debug":
-        logger.debug(message)
+        logger.debug(log_message)
     
-    # 如果是前台运行（终端可用），也显示在控制台
+    # 如果是前台运行（终端可用），也显示在控制台（保留颜色标记）
     import sys
     if sys.stdout.isatty():
         console.print(message)
@@ -296,7 +303,7 @@ def start_watching():
     # Start worker threads for async parsing
     worker_threads = []
     for i in range(WORKER_THREADS):
-        worker_thread = threading.Thread(target=_worker_loop, args=(context_manager, i), daemon=True)
+        worker_thread = threading.Thread(target=_worker_loop, args=(context_manager,), daemon=True)
         worker_thread.start()
         worker_threads.append(worker_thread)
     log_and_print(t("watch_workers_started", count=WORKER_THREADS))
