@@ -35,7 +35,8 @@ class OpenVikingManager(IContextManager):
             uri = f"{self.mount_path}{filename}"
             
             if self.mode == "embedded":
-                console.print(t("ov_write_embed", uri=uri))
+                # 减少日志噪音，只在调试模式下输出
+                logger.debug(f"📝 [OpenViking] Processing context: {uri}")
                 
                 # 1. 生成分层上下文
                 l0_abstract = self._generate_l0_abstract(content)
@@ -62,7 +63,7 @@ class OpenVikingManager(IContextManager):
                     payload=payload
                 )
             else:
-                console.print(t("ov_write_ext", uri=uri))
+                logger.debug(f"📝 [OpenViking] External write: {uri}")
                 return True
         except Exception as e:
             logger.error(f"Error writing context for {filename}: {e}", exc_info=True)
@@ -72,10 +73,10 @@ class OpenVikingManager(IContextManager):
         try:
             uri = f"{self.mount_path}{filename}"
             if self.mode == "embedded":
-                console.print(t("ov_del_embed", uri=uri))
+                logger.debug(f"🗑️ [OpenViking] Deleting context: {uri}")
                 return self.search_runtime.delete_by_uri(self.collection_name, uri)
             else:
-                console.print(t("ov_del_ext", uri=uri))
+                logger.debug(f"🗑️ [OpenViking] External delete: {uri}")
                 return True
         except Exception as e:
             logger.error(f"Error deleting context for {filename}: {e}", exc_info=True)
@@ -84,7 +85,7 @@ class OpenVikingManager(IContextManager):
     def recursive_retrieve(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
         try:
             if self.mode == "embedded":
-                console.print(t("ov_ret_embed", query=query))
+                logger.debug(f"🔍 [OpenViking] Searching: {query}")
                 
                 # 1. 意图分析 (省略)
                 # 2. 调用底层引擎寻找高分目录/文档
@@ -105,7 +106,7 @@ class OpenVikingManager(IContextManager):
                     })
                 return final_context
             else:
-                console.print(t("ov_ret_ext", endpoint=self.endpoint, query=query))
+                logger.debug(f"🔍 [OpenViking] External search: {query}")
                 return []
         except Exception as e:
             logger.error(f"Error retrieving context for query '{query}': {e}", exc_info=True)

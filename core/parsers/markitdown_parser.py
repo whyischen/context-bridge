@@ -32,7 +32,9 @@ class MarkItDownParser(BaseParser):
             return result.text_content or ""
             
         except Exception as e:
-            logger.error(f"MarkItDown failed to parse {file_path}: {e}")
+            # 减少日志噪音，只记录非依赖问题的错误
+            if "MissingDependencyException" not in str(e):
+                logger.error(f"MarkItDown failed to parse {file_path}: {e}")
             raise
 
     def _parse_text(self, file_path: Path) -> str:

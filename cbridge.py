@@ -22,6 +22,11 @@ def init():
     import os
     import signal
     import shutil
+    import subprocess
+    import sys
+    from pathlib import Path
+    from core.utils.logger import setup_logger
+    from core.watcher import start_watching
     
     console.print(t("init_welcome"))
     
@@ -117,14 +122,75 @@ def init():
     
     # Step 4: Start daemon automatically
     console.print(t("init_starting_daemon"))
-    import subprocess
     
     try:
-        # Use subprocess to call 'cbridge start --daemon'
-        cmd = [sys.executable, sys.argv[0], "start", "--daemon"]
-        subprocess.run(cmd, check=True)
+        # 确保日志目录存在
+        log_dir = Path.home() / ".cbridge" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 直接调用 start 函数，默认后台模式
+        import subprocess
+        import sys
+        
+        # 启动后台服务
+        if sys.platform == "win32":
+            # Windows: spawn a detached subprocess
+            pid_file = Path.home() / ".cbridge" / "cbridge_watcher.pid"
+            cmd = [sys.executable, "-m", "cbridge", "start"]
+            CREATE_NEW_PROCESS_GROUP = 0x00000200
+            DETACHED_PROCESS = 0x00000008
+            proc = subprocess.Popen(
+                cmd,
+                creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+                close_fds=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            pid_file.parent.mkdir(parents=True, exist_ok=True)
+            pid_file.write_text(str(proc.pid))
+            console.print(f"[green]✅ ContextBridge watcher started in background (PID {proc.pid})[/green]")
+        else:
+            # Unix: traditional double-fork daemonize
+            pid = os.fork()
+            if pid > 0:
+                pid_file = Path.home() / ".cbridge" / "cbridge_watcher.pid"
+                pid_file.parent.mkdir(parents=True, exist_ok=True)
+                pid_file.write_text(str(pid))
+                console.print(f"[green]✅ ContextBridge watcher started in background (PID {pid})[/green]")
+            else:
+                # 子进程中启动服务
+                os.chdir("/")
+                os.setsid()
+                os.umask(0)
+                
+                # 重定向输出到日志
+                logger = setup_logger("cbridge-watcher")
+                
+                class LoggerWriter:
+                    def __init__(self, log_func):
+                        self.log_func = log_func
+                    def write(self, msg):
+                        if msg and msg.strip():
+                            self.log_func(msg.strip())
+                    def flush(self):
+                        pass
+                    def isatty(self):
+                        return False
+                
+                sys.stdout = LoggerWriter(logger.info)
+                sys.stderr = LoggerWriter(logger.error)
+                
+                # 启动监控服务
+                init_workspace()
+                start_watching()
+                return
+        
+        console.print(f"[dim]📝 Logs: {log_dir / 'cbridge-watcher.log'}[/dim]")
+        console.print(f"[dim]💡 Use 'cbridge logs -f' to view real-time logs[/dim]")
+        console.print(f"[dim]💡 Use 'cbridge stop' to stop the watcher[/dim]")
         console.print(t("init_complete"))
-    except subprocess.CalledProcessError as e:
+        
+    except Exception as e:
         console.print(t("init_daemon_failed", error=str(e)))
 
 @cli.group(help=t("watch_desc"))
@@ -140,41 +206,324 @@ def watch_list():
 
 @watch.command(name="add", help=t("watch_add_desc"))
 @click.argument("path")
-def watch_add(path):
+@click.option('--no-index', is_flag=True, help='仅添加到监控列表，不立即索引（后台执行时索引）')
+@click.option('--quiet', '-q', is_flag=True, help='静默模式，减少日志输出')
+@click.option('--background', '-b', is_flag=True, help='后台执行索引，立即返回')
+def watch_add(path, no_index, quiet, background):
+    import sys
+    import os
+    from pathlib import Path as PathLib
+    
     if add_watch_dir(path):
         console.print(t("watch_add_success", path=path))
-        index_dir(Path(path))
+        
+        if no_index:
+            console.print()
+            console.print("[green]✅ 文件夹已添加到监控列表[/green]")
+            console.print("[dim]💡 提示: 使用 'cbridge start' 启动后台监控并自动索引[/dim]")
+            console.print("[dim]💡 提示: 使用 'cbridge index' 手动索引所有文件[/dim]")
+        else:
+            # 统计文件数量
+            console.print()
+            console.print("[cyan]📂 正在扫描文件夹...[/cyan]")
+            
+            from core.parser import SUPPORTED_EXTENSIONS
+            target_path = PathLib(path).absolute()
+            
+            # 扫描支持的文件
+            all_files = []
+            if target_path.is_file():
+                if target_path.suffix.lower() in SUPPORTED_EXTENSIONS:
+                    all_files.append(target_path)
+            else:
+                for root, _, files in os.walk(target_path):
+                    for f in files:
+                        file_path = PathLib(root) / f
+                        if file_path.suffix.lower() in SUPPORTED_EXTENSIONS:
+                            all_files.append(file_path)
+            
+            if not all_files:
+                console.print("[yellow]⚠️  未发现支持的文件格式[/yellow]")
+                console.print(f"[dim]支持的格式: {', '.join(SUPPORTED_EXTENSIONS)}[/dim]")
+                return
+            
+            console.print(f"[green]✅ 发现 {len(all_files)} 个文件需要索引[/green]")
+            
+            # 如果指定了 background 参数，直接后台执行
+            if background:
+                console.print()
+                console.print("[cyan]🚀 启动后台索引进程...[/cyan]")
+                
+                # 启动后台索引进程
+                import subprocess
+                
+                # 构建后台命令
+                cmd = [sys.executable, "-m", "cbridge", "index", "--path", str(target_path)]
+                if quiet:
+                    cmd.append("--quiet")
+                
+                try:
+                    # 确保日志目录存在
+                    from pathlib import Path
+                    log_dir = Path.home() / ".cbridge" / "logs"
+                    log_dir.mkdir(parents=True, exist_ok=True)
+                    log_file = log_dir / "cbridge-watcher.log"
+                    
+                    # Windows 平台使用 creationflags 参数
+                    if sys.platform == "win32":
+                        with open(log_file, "a", encoding="utf-8") as f:
+                            subprocess.Popen(cmd, 
+                                           creationflags=subprocess.CREATE_NO_WINDOW,
+                                           stdout=f, stderr=f)
+                    else:
+                        with open(log_file, "a", encoding="utf-8") as f:
+                            subprocess.Popen(cmd, stdout=f, stderr=f)
+                    
+                    console.print("[green]✅ 文件夹已添加到监控列表，后台索引已启动[/green]")
+                    console.print("[dim]💡 提示: 使用 'cbridge logs' 查看索引进度[/dim]")
+                    console.print("[dim]💡 提示: 使用 'cbridge status' 查看系统状态[/dim]")
+                except Exception as e:
+                    console.print(f"[red]❌ 启动后台索引失败: {e}[/red]")
+                    console.print("[yellow]⚠️  将改为前台执行索引...[/yellow]")
+                    # 回退到前台执行
+                    result = index_dir(target_path, show_progress=not quiet)
+                    _display_index_summary(result, quiet)
+            else:
+                # 询问用户是否需要后台执行
+                console.print()
+                if len(all_files) > 10:  # 文件较多时建议后台执行
+                    console.print("[yellow]💡 检测到文件数量较多，建议后台执行以避免阻塞[/yellow]")
+                
+                import click
+                use_background = click.confirm(
+                    "是否需要后台执行索引？(后台执行可立即返回，使用 'cbridge logs' 查看进度)",
+                    default=len(all_files) > 10
+                )
+                
+                if use_background:
+                    console.print()
+                    console.print("[cyan]🚀 启动后台索引进程...[/cyan]")
+                    
+                    # 启动后台索引进程
+                    import subprocess
+                    
+                    # 构建后台命令
+                    cmd = [sys.executable, "-m", "cbridge", "index", "--path", str(target_path)]
+                    if quiet:
+                        cmd.append("--quiet")
+                    
+                    try:
+                        # Windows 平台使用 creationflags 参数
+                        if sys.platform == "win32":
+                            subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+                        else:
+                            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        
+                        console.print("[green]✅ 文件夹已添加到监控列表，后台索引已启动[/green]")
+                        console.print("[dim]💡 提示: 使用 'cbridge logs' 查看索引进度[/dim]")
+                        console.print("[dim]💡 提示: 使用 'cbridge status' 查看系统状态[/dim]")
+                    except Exception as e:
+                        console.print(f"[red]❌ 启动后台索引失败: {e}[/red]")
+                        console.print("[yellow]⚠️  将改为前台执行索引...[/yellow]")
+                        # 回退到前台执行
+                        result = index_dir(target_path, show_progress=not quiet)
+                        _display_index_summary(result, quiet)
+                else:
+                    console.print()
+                    console.print("[cyan]🔄 开始前台索引...[/cyan]")
+                    # 执行向量化并显示进度
+                    result = index_dir(target_path, show_progress=not quiet)
+                    _display_index_summary(result, quiet)
+                    
+                    console.print()
+                    console.print("[green]✅ 文件夹已添加到监控列表并完成索引[/green]")
+                    console.print("[dim]💡 提示: 使用 'cbridge start' 启动后台监控[/dim]")
+                    console.print("[dim]💡 提示: 使用 'cbridge logs' 查看实时日志[/dim]")
     else:
         console.print(t("watch_add_exists", path=path))
 
 @watch.command(name="remove", help=t("watch_remove_desc"))
 @click.argument("path")
-def watch_remove(path):
-    if remove_watch_dir(path):
-        console.print(t("watch_remove_success", path=path))
-    else:
+@click.option('--skip-cleanup', is_flag=True, help='跳过向量数据清理（仅从监控列表移除）')
+@click.option('--wait', is_flag=True, help='等待清理完成（默认后台执行）')
+def watch_remove(path, skip_cleanup, wait):
+    import threading
+    from pathlib import Path as PathLib
+    from core.utils.logger import setup_logger
+    
+    if not remove_watch_dir(path):
         console.print(t("watch_remove_not_found", path=path))
+        return
+    
+    console.print(t("watch_remove_success", path=path))
+    
+    if skip_cleanup:
+        console.print("[yellow]⚠️  已跳过向量数据清理[/yellow]")
+        console.print("[dim]💡 提示: 向量数据仍保留在数据库中[/dim]")
+        return
+    
+    console.print()
+    console.print("[cyan]🔄 正在扫描文件夹...[/cyan]")
+    
+    try:
+        from core.parser import SUPPORTED_EXTENSIONS
+        import os
+        
+        target_path = PathLib(path).absolute()
+        
+        # 快速扫描需要删除的文件
+        files_to_delete = []
+        if target_path.is_file():
+            if target_path.suffix.lower() in SUPPORTED_EXTENSIONS:
+                files_to_delete.append(target_path.name)
+        else:
+            for root, _, files in os.walk(target_path):
+                for f in files:
+                    file_path = PathLib(root) / f
+                    if file_path.suffix.lower() in SUPPORTED_EXTENSIONS:
+                        files_to_delete.append(file_path.name)
+        
+        if not files_to_delete:
+            console.print("[yellow]⚠️  未找到需要清理的文件[/yellow]")
+            return
+        
+        console.print(f"[green]✅ 发现 {len(files_to_delete)} 个文件需要清理[/green]")
+        
+        if not wait:
+            console.print()
+            console.print("[cyan]🚀 清理任务已转入后台执行[/cyan]")
+            console.print(f"[dim]💡 使用 'cbridge logs -f' 查看实时清理进度[/dim]")
+            console.print(f"[dim]📝 日志文件: {PathLib.home() / '.cbridge' / 'logs' / 'cbridge-watcher.log'}[/dim]")
+        
+        # 后台清理函数
+        def cleanup_vectors():
+            logger = setup_logger("cbridge-watcher")
+            try:
+                from core.factories import initialize_system
+                
+                logger.info("=" * 50)
+                logger.info(f"开始清理向量数据: {target_path}")
+                logger.info(f"需要清理 {len(files_to_delete)} 个文件")
+                logger.info("=" * 50)
+                
+                context_manager = initialize_system()
+                
+                success_count = 0
+                failed_count = 0
+                
+                for idx, filename in enumerate(files_to_delete, 1):
+                    try:
+                        if context_manager.delete_context(filename):
+                            success_count += 1
+                            logger.info(f"[{idx}/{len(files_to_delete)}] ✅ 已删除: {filename}")
+                            if wait:
+                                console.print(f"[green]✅ [{idx}/{len(files_to_delete)}][/green] {filename}")
+                        else:
+                            failed_count += 1
+                            logger.warning(f"[{idx}/{len(files_to_delete)}] ⚠️  未找到: {filename}")
+                            if wait:
+                                console.print(f"[yellow]⚠️  [{idx}/{len(files_to_delete)}][/yellow] {filename} (未找到)")
+                    except Exception as e:
+                        failed_count += 1
+                        logger.error(f"[{idx}/{len(files_to_delete)}] ❌ 删除失败: {filename} - {e}")
+                        if wait:
+                            console.print(f"[red]❌ [{idx}/{len(files_to_delete)}][/red] {filename} - {e}")
+                
+                # 输出汇总
+                logger.info("=" * 50)
+                logger.info("📊 清理汇总")
+                logger.info(f"总文件数: {len(files_to_delete)}")
+                logger.info(f"成功: {success_count}")
+                logger.info(f"失败/未找到: {failed_count}")
+                logger.info("✅ 向量数据清理完成")
+                logger.info("=" * 50)
+                
+                if wait:
+                    console.print()
+                    console.print("[bold cyan]📊 清理汇总[/bold cyan]")
+                    console.print(f"[dim]总文件数:[/dim] {len(files_to_delete)}")
+                    console.print(f"[green]成功:[/green] {success_count}")
+                    console.print(f"[yellow]失败/未找到:[/yellow] {failed_count}")
+                    console.print()
+                    console.print("[green]✅ 向量数据清理完成[/green]")
+                
+            except Exception as e:
+                logger.error(f"❌ 清理过程出错: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                if wait:
+                    console.print(f"[red]❌ 清理过程出错: {e}[/red]")
+        
+        # 启动后台线程
+        cleanup_thread = threading.Thread(target=cleanup_vectors, daemon=False, name="VectorCleanup")
+        cleanup_thread.start()
+        
+        # 如果用户选择等待，则阻塞直到完成
+        if wait:
+            console.print()
+            console.print("[dim]正在清理，请稍候...[/dim]")
+            console.print()
+            cleanup_thread.join()
+        
+    except Exception as e:
+        console.print(f"[red]❌ 启动清理任务失败: {e}[/red]")
+        import traceback
+        traceback.print_exc()
 
 @cli.command(help=t("index_desc"))
-def index():
-    console.print(t("index_start"))
-    index_all()
+@click.option('--path', help='索引指定路径（默认索引所有监控文件夹）')
+@click.option('--quiet', '-q', is_flag=True, help='静默模式，减少日志输出')
+def index(path, quiet):
+    # 设置日志记录（用于后台索引进程）
+    import sys
+    from core.utils.logger import setup_logger
+    
+    # 如果是后台进程，设置日志记录
+    if not sys.stdout.isatty():
+        logger = setup_logger("cbridge-watcher")
+        
+        class LoggerWriter:
+            def __init__(self, log_func):
+                self.log_func = log_func
+            def write(self, msg):
+                if msg and msg.strip():
+                    self.log_func(msg.strip())
+            def flush(self):
+                pass
+            def isatty(self):
+                return False
+        
+        sys.stdout = LoggerWriter(logger.info)
+        sys.stderr = LoggerWriter(logger.error)
+    
+    if path:
+        from pathlib import Path as PathLib
+        from core.watcher import index_dir
+        result = index_dir(PathLib(path), show_progress=not quiet)
+        _display_index_summary(result, quiet)
+    else:
+        console.print(t("index_start"))
+        index_all()
 
 @cli.command(help=t("start_desc"))
-@click.option('--daemon', is_flag=True, help='Run as background daemon')
-def start(daemon):
+@click.option('--foreground', '-f', is_flag=True, help='Run in foreground (default is background)')
+def start(foreground):
     import subprocess
     import sys
     import os
     from pathlib import Path
     from core.utils.logger import setup_logger
     
-    if daemon:
+    # 确保日志目录存在
+    log_dir = Path.home() / ".cbridge" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    if not foreground:
         # 后台运行模式
         if sys.platform == "win32":
             # Windows: spawn a detached subprocess
             pid_file = Path.home() / ".cbridge" / "cbridge_watcher.pid"
-            cmd = [sys.executable, sys.argv[0], "start"]
+            cmd = [sys.executable, sys.argv[0], "start", "--foreground"]
             CREATE_NEW_PROCESS_GROUP = 0x00000200
             DETACHED_PROCESS = 0x00000008
             proc = subprocess.Popen(
@@ -186,8 +535,10 @@ def start(daemon):
             )
             pid_file.parent.mkdir(parents=True, exist_ok=True)
             pid_file.write_text(str(proc.pid))
-            console.print(f"[green]✅ ContextBridge watcher started (PID {proc.pid})[/green]")
+            console.print(f"[green]✅ ContextBridge watcher started in background (PID {proc.pid})[/green]")
             console.print(f"[dim]📝 Logs: {Path.home() / '.cbridge' / 'logs' / 'cbridge-watcher.log'}[/dim]")
+            console.print(f"[dim]💡 Use 'cbridge logs -f' to view real-time logs[/dim]")
+            console.print(f"[dim]💡 Use 'cbridge stop' to stop the watcher[/dim]")
             return
         else:
             # Unix: traditional double-fork daemonize
@@ -196,8 +547,10 @@ def start(daemon):
                 pid_file = Path.home() / ".cbridge" / "cbridge_watcher.pid"
                 pid_file.parent.mkdir(parents=True, exist_ok=True)
                 pid_file.write_text(str(pid))
-                console.print(f"[green]✅ ContextBridge watcher started (PID {pid})[/green]")
+                console.print(f"[green]✅ ContextBridge watcher started in background (PID {pid})[/green]")
                 console.print(f"[dim]📝 Logs: {Path.home() / '.cbridge' / 'logs' / 'cbridge-watcher.log'}[/dim]")
+                console.print(f"[dim]💡 Use 'cbridge logs -f' to view real-time logs[/dim]")
+                console.print(f"[dim]💡 Use 'cbridge stop' to stop the watcher[/dim]")
                 return
             os.chdir("/")
             os.setsid()
@@ -224,10 +577,7 @@ def start(daemon):
         console.print(t("start_init"))
         init_workspace()
         console.print(t("start_engine"))
-        console.print("[green]✅ ContextBridge watcher is running...[/green]")
-        console.print()
-        console.print("[yellow]💡 Tip: To run in background, use:[/yellow]")
-        console.print("[cyan]   cbridge start --daemon[/cyan]")
+        console.print("[green]✅ ContextBridge watcher is running in foreground...[/green]")
         console.print()
         console.print("[dim]Press Ctrl+C to stop[/dim]")
         console.print()
@@ -639,6 +989,60 @@ def status():
             console.print("[yellow]⚠️  API Server: Not running[/yellow]")
     else:
         console.print("[yellow]⚠️  API Server: Not running[/yellow]")
+
+@cli.command(help=t("logs_desc"))
+@click.option('--lines', '-n', default=50, help=t("logs_lines_help"))
+@click.option('--follow', '-f', is_flag=True, help=t("logs_follow_help"))
+def logs(lines, follow):
+    """查看 ContextBridge 日志"""
+    from pathlib import Path
+    import time
+    
+    log_file = Path.home() / ".cbridge" / "logs" / "cbridge-watcher.log"
+    
+    if not log_file.exists():
+        console.print(t("logs_not_found", file=log_file))
+        console.print(t("logs_hint"))
+        return
+    
+    try:
+        if follow:
+            # 实时跟踪模式
+            console.print(t("logs_follow_mode", file=log_file))
+            console.print(t("logs_exit_hint"))
+            console.print()
+            
+            # 先显示最后 N 行
+            with open(log_file, 'r', encoding='utf-8') as f:
+                all_lines = f.readlines()
+                for line in all_lines[-lines:]:
+                    print(line.rstrip())
+            
+            # 然后实时跟踪新内容
+            with open(log_file, 'r', encoding='utf-8') as f:
+                f.seek(0, 2)  # 移动到文件末尾
+                while True:
+                    line = f.readline()
+                    if line:
+                        print(line.rstrip())
+                    else:
+                        time.sleep(0.1)
+        else:
+            # 显示最后 N 行
+            console.print(t("logs_file", file=log_file))
+            console.print(t("logs_showing", lines=lines))
+            console.print()
+            
+            with open(log_file, 'r', encoding='utf-8') as f:
+                all_lines = f.readlines()
+                for line in all_lines[-lines:]:
+                    print(line.rstrip())
+            
+            console.print(t("logs_follow_hint"))
+    except KeyboardInterrupt:
+        console.print(t("logs_stopped"))
+    except Exception as e:
+        console.print(t("logs_error", error=e))
 
 @cli.command(help=t("config_desc"))
 def config():

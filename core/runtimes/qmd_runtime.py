@@ -17,7 +17,7 @@ class QMDRuntime(ISearchRuntime):
         
         if self.mode == "embedded":
             try:
-                console.print(t("qmd_init_embed"))
+                logger.info("⚙️ Initializing embedded QMD engine (based on ChromaDB)...")
                 from core.utils.model_downloader import ensure_chroma_model
                 ensure_chroma_model()
                 
@@ -47,7 +47,7 @@ class QMDRuntime(ISearchRuntime):
                 logger.error(f"QMD initialization error: {e}", exc_info=True)
                 raise
         else:
-            console.print(t("qmd_init_ext", endpoint=self.endpoint, collection=self.collection_name))
+            logger.info(f"⚙️ Initializing external QMD: {self.endpoint}")
             self.client = None # 实际场景中这里会初始化 QMD SDK
 
     def upsert(self, collection_name: str, doc_id: str, vector: List[float], payload: Dict[str, Any]) -> bool:
@@ -69,7 +69,7 @@ class QMDRuntime(ISearchRuntime):
                 logger.error(f"Error upserting document {doc_id}: {e}", exc_info=True)
                 return False
         else:
-            console.print(t("qmd_write_ext", endpoint=self.endpoint, collection=collection_name, doc_id=doc_id))
+            logger.debug(f"📝 [QMD] External write: {doc_id}")
             return True
 
     def delete_by_uri(self, collection_name: str, uri: str) -> bool:
@@ -85,7 +85,7 @@ class QMDRuntime(ISearchRuntime):
                 logger.error(f"Error deleting document with uri {uri}: {e}", exc_info=True)
                 return False
         else:
-            console.print(t("qmd_del_ext", endpoint=self.endpoint, collection=collection_name, uri=uri))
+            logger.debug(f"🗑️ [QMD] External delete: {uri}")
             return True
 
     def hybrid_search(self, collection_name: str, query_text: str, top_k: int = 5) -> List[Dict[str, Any]]:
@@ -113,7 +113,7 @@ class QMDRuntime(ISearchRuntime):
                 logger.error(f"Error searching: {e}", exc_info=True)
                 return []
         else:
-            console.print(t("qmd_search_ext", endpoint=self.endpoint, collection=collection_name, query=query_text))
+            logger.debug(f"🔍 [QMD] External search: {query_text}")
             return []
 
     def get_all_metadatas(self, collection_name: str) -> List[Dict[str, Any]]:
