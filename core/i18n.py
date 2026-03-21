@@ -86,6 +86,10 @@ MESSAGES = {
         "explain_final_score": "      • 综合得分: {score:.1f}% (语义70% + 关键词30%)",
         "explain_content_preview": "   [bold blue]📝 内容预览:[/bold blue]",
         "explain_no_keywords": "无",
+        "explain_abstract_label": "[bold cyan]📖 摘要:[/bold cyan]",
+        "search_abstract_label": "[bold]摘要:[/bold]",
+        "search_excerpts_label": "[bold]相关片段:[/bold]",
+        "search_no_content": "无内容",
         
         "status_desc": "查看当前配置和运行状态",
         "status_title": "[bold cyan]📊 ContextBridge 运行状态:[/bold cyan]",
@@ -334,6 +338,10 @@ MESSAGES = {
         "explain_final_score": "      • Final score: {score:.1f}% (70% semantic + 30% keyword)",
         "explain_content_preview": "   [bold blue]📝 Content Preview:[/bold blue]",
         "explain_no_keywords": "None",
+        "explain_abstract_label": "[bold cyan]📖 Abstract:[/bold cyan]",
+        "search_abstract_label": "[bold]Abstract:[/bold]",
+        "search_excerpts_label": "[bold]Relevant Excerpts:[/bold]",
+        "search_no_content": "No content available",
         
         "status_desc": "View current configuration and running status",
         "status_title": "[bold cyan]📊 ContextBridge Status:[/bold cyan]",

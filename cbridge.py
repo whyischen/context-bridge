@@ -965,7 +965,9 @@ def _rerank_by_keywords(query: str, results: list) -> list:
     
     # Calculate keyword match scores
     for result in results:
-        content = result.get('content', '').lower()
+        abstract = result.get('abstract', '').lower()
+        excerpts = " ".join(result.get('relevant_excerpts', [])).lower()
+        content = f"{abstract} {excerpts}"
         uri = result.get('uri', '').lower()
         
         # Find which keywords matched and count occurrences
@@ -1004,8 +1006,20 @@ def _display_simple_results(results: list):
     """Display search results in simple format (original behavior)"""
     for idx, res in enumerate(results, 1):
         source = res.get('uri', 'Unknown')
-        content = res.get('content', '')
+        abstract = res.get('abstract', '')
+        excerpts = res.get('relevant_excerpts', [])
         score = res.get('score', 0.0)
+        
+        # Combine abstract and excerpts for simple display
+        if not abstract and not excerpts:
+            content = t("search_no_content")
+        else:
+            abstract_part = f"{t('search_abstract_label')} {abstract}" if abstract else ""
+            excerpts_part = ""
+            if excerpts:
+                excerpts_part = f"\n\n{t('search_excerpts_label')}\n" + "\n".join([f"- {e}" for e in excerpts])
+            content = abstract_part + excerpts_part
+        
         console.print(t("search_result_item_numbered", 
                        idx=idx, 
                        source=source, 
@@ -1015,11 +1029,10 @@ def _display_simple_results(results: list):
 
 def _display_explainable_results(query: str, results: list):
     """Display search results with detailed explanations (explainable RAG)"""
-    import re
-    
     for idx, res in enumerate(results, 1):
         source = res.get('uri', 'Unknown')
-        content = res.get('content', '')
+        abstract = res.get('abstract', '')
+        excerpts = res.get('relevant_excerpts', [])
         score = res.get('score', 0.0)
         
         # Extract explanation metadata
@@ -1052,11 +1065,19 @@ def _display_explainable_results(query: str, results: list):
         console.print(t("explain_keyword_score", score=keyword_pct))
         console.print(t("explain_final_score", score=score_pct))
         
-        # Display content preview
-        console.print(t("explain_content_preview"))
-        console.print("-" * 40)
-        console.print(content.strip())
-        console.print("-" * 40)
+        # Display Abstract
+        if abstract:
+            console.print(f"   {t('explain_abstract_label')} {abstract}")
+        
+        # Display excerpts preview
+        if excerpts:
+            console.print(t("explain_content_preview"))
+            console.print("-" * 40)
+            for e in excerpts:
+                console.print(f"- {e.strip()}")
+            console.print("-" * 40)
+        elif not abstract:
+            console.print(f"   [dim]{t('search_no_content')}[/dim]")
 
 @cli.command(help=t("status_desc"))
 def status():

@@ -152,14 +152,21 @@ class OpenVikingManager(IContextManager):
                 meta = res.get("metadata", {})
                 uri = meta.get("uri", "")
                 chunk_text = res.get("text", "")
+                score = res.get("score", 0.0)
                 
                 if uri not in assembled_context:
                     assembled_context[uri] = {
                         "uri": uri,
                         "filename": meta.get("filename", ""),
                         "abstract": uri_to_abstract.get(uri, meta.get("l0_abstract", "")),
-                        "relevant_excerpts": []
+                        "relevant_excerpts": [],
+                        "score": score
                     }
+                else:
+                    # 保持最大分数
+                    if score > assembled_context[uri]["score"]:
+                        assembled_context[uri]["score"] = score
+                        
                 assembled_context[uri]["relevant_excerpts"].append(chunk_text)
                 
             return list(assembled_context.values())

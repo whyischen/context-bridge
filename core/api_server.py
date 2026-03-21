@@ -29,9 +29,12 @@ class SearchRequest(BaseModel):
     top_k: int = 5
 
 class SearchResult(BaseModel):
-    content: str
-    metadata: Dict[str, Any]
+    uri: str
+    filename: str
+    abstract: str
+    relevant_excerpts: List[str]
     score: float
+    metadata: Dict[str, Any] = {}
 
 class SearchResponse(BaseModel):
     results: List[SearchResult]
@@ -56,9 +59,12 @@ async def search_documents(request: SearchRequest):
         formatted_results = []
         for res in results:
             formatted_results.append(SearchResult(
-                content=res.get('content', ''),
-                metadata={"source": res.get('uri', 'Unknown')},
-                score=res.get('score', 0.0)
+                uri=res.get('uri', 'Unknown'),
+                filename=res.get('filename', 'Unknown'),
+                abstract=res.get('abstract', ''),
+                relevant_excerpts=res.get('relevant_excerpts', []),
+                score=res.get('score', 0.0),
+                metadata={} # Keeping for compatibility if needed
             ))
             
         return SearchResponse(results=formatted_results)

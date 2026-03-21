@@ -46,11 +46,18 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         if not results:
             return [TextContent(type="text", text="No relevant information found.")]
             
-        response_text = "Found the following relevant excerpts:\n\n"
+        response_text = "Found the following relevant documents:\n\n"
         for res in results:
             source = res.get('uri', 'Unknown')
-            content = res.get('content', '')
-            response_text += f"--- From {source} ---\n{content}\n\n"
+            abstract = res.get('abstract', '')
+            excerpts = res.get('relevant_excerpts', [])
+            
+            response_text += f"### Source: {source}\n"
+            response_text += f"**Abstract:** {abstract}\n"
+            response_text += "**Relevant Excerpts:**\n"
+            for excerpt in excerpts:
+                response_text += f"- {excerpt}\n"
+            response_text += "\n"
             
         return [TextContent(type="text", text=response_text)]
     
