@@ -916,6 +916,7 @@ def stop():
 @click.option('--explain/--no-explain', default=True, help='Show/hide detailed explanation for each result (default: enabled)')
 def search(query, top_k, threshold, rerank, explain):
     from core.config import get_search_config
+    from core.utils.search_optimizer import SearchOptimizer
     
     context_manager = initialize_system()
     
@@ -926,7 +927,9 @@ def search(query, top_k, threshold, rerank, explain):
     if threshold is None:
         threshold = search_config['min_similarity']
     
-    results = context_manager.recursive_retrieve(query, top_k=top_k * 2 if rerank else top_k, min_similarity=threshold)
+    # Retrieve more results for better reranking
+    retrieve_count = top_k * 3 if rerank else top_k
+    results = context_manager.recursive_retrieve(query, top_k=retrieve_count, min_similarity=threshold)
     
     if not results:
         console.print(t("search_empty"))
@@ -944,11 +947,37 @@ def search(query, top_k, threshold, rerank, explain):
         if filtered_count > 0:
             console.print(t("search_filtered", count=filtered_count, threshold=threshold))
     
-    # Apply keyword-based reranking
+    if not results:
+        console.print(t("search_empty_after_filter"))
+        return
+    
+    # Apply advanced reranking
     if rerank and results:
+        # Use advanced optimizer with BM25, keyword matching, and position scoring
+        optimizer_config = search_config.get('optimizer', {})
+        results = SearchOptimizer.optimize_results(
+            query=query,
+            results=results,
+            config=optimizer_config,
+            explain=explain
+        )
+        console.print("✨ Advanced reranking applied (BM25 + Keywords + Position)")
+    else:
+        # Fallback to simple keyword reranking for backward compatibility
         results = _rerank_by_keywords(query, results)
-        results = results[:top_k]  # Limit to top_k after reranking
         console.print(t("search_reranked"))
+    
+    # Apply threshold filtering again after reranking (scores have changed)
+    if threshold > 0.0:
+        pre_filter_count = len(results)
+        results = [r for r in results if r.get('score', 0.0) >= threshold]
+        post_filter_count = len(results)
+        if pre_filter_count > post_filter_count:
+            filtered = pre_filter_count - post_filter_count
+            console.print(f"🔍 Filtered {filtered} low-relevance results (threshold: {threshold*100:.0f}%)")
+    
+    # Limit to top_k after filtering
+    results = results[:top_k]
     
     if not results:
         console.print(t("search_empty_after_filter"))
@@ -1038,56 +1067,68 @@ def _display_simple_results(results: list):
                        content=content.strip()))
 
 def _display_explainable_results(query: str, results: list):
-    """Display search results with detailed explanations (explainable RAG)"""
+    """Display search results with detailed explanations"""
     for idx, res in enumerate(results, 1):
         source = res.get('uri', 'Unknown')
         abstract = res.get('abstract', '')
         excerpts = res.get('relevant_excerpts', [])
         score = res.get('score', 0.0)
         
-        # Extract explanation metadata
-        semantic_score = res.get('semantic_score', score)
-        keyword_score = res.get('keyword_score', 0.0)
-        matched_keywords = res.get('matched_keywords', {})
-        keyword_match_count = res.get('keyword_match_count', 0)
-        total_keywords = res.get('total_keywords', 0)
+        # Display header
+        console.print(f"\n[bold cyan]#{idx}[/bold cyan] 📄 [bold]Source:[/bold] {source}")
+        console.print(f"   [green]✅ Match Score: {score*100:.1f}%[/green]")
         
-        # Convert scores to percentages
-        score_pct = score * 100
-        semantic_pct = semantic_score * 100
-        keyword_pct = keyword_score * 100
-        
-        # Format matched keywords with counts
-        if matched_keywords:
-            kw_list = [f"{kw}({count})" for kw, count in matched_keywords.items()]
-            kw_display = ", ".join(kw_list)
+        # Check if we have advanced score breakdown
+        if 'score_breakdown' in res:
+            breakdown = res['score_breakdown']
+            console.print(f"   📊 [bold]Advanced Score Breakdown:[/bold]")
+            console.print(f"      • Semantic similarity: {breakdown['semantic']*100:.1f}%")
+            console.print(f"      • BM25 relevance: {breakdown['bm25']*100:.1f}%")
+            console.print(f"      • Keyword matching: {breakdown['keyword']*100:.1f}%")
+            console.print(f"      • Position score: {breakdown['position']*100:.1f}%")
+            console.print(f"      • Title match: {breakdown['title']*100:.1f}%")
+            if breakdown.get('phrase_bonus', 0) > 0:
+                console.print(f"      • Phrase bonus: +{breakdown['phrase_bonus']*100:.1f}%")
+            
+            # Display matched keywords
+            matched_kw = res.get('matched_keywords', {})
+            if matched_kw:
+                kw_display = ", ".join([f"{k}({v})" for k, v in list(matched_kw.items())[:5]])
+                total_kw = len(res.get('query_terms', []))
+                matched_count = len([k for k in matched_kw.keys() if not k.endswith('*')])
+                console.print(f"   🔑 [bold]Keywords:[/bold] Matched {matched_count}/{total_kw} - {kw_display}")
         else:
-            kw_display = t("explain_no_keywords")
+            # Fallback to simple keyword display
+            matched_kw = res.get('matched_keywords', {})
+            if matched_kw:
+                kw_display = ", ".join([f"{k}({v})" for k, v in list(matched_kw.items())[:5]])
+                total_kw = res.get('total_keywords', 0)
+                matched_count = res.get('keyword_match_count', 0)
+                console.print(f"   🔑 [bold]Keywords:[/bold] Matched {matched_count}/{total_kw} - {kw_display}")
+                
+                # Display old-style score details
+                semantic = res.get('semantic_score', 0.0)
+                keyword = res.get('keyword_score', 0.0)
+                console.print(f"   📊 [bold]Match Details:[/bold]")
+                console.print(f"      • Semantic similarity: {semantic*100:.1f}%")
+                console.print(f"      • Keyword matching: {keyword*100:.1f}%")
+                console.print(f"      • Final score: {score*100:.1f}% (70% semantic + 30% keyword)")
         
-        # Display result header
-        console.print(f"\n{t('explain_result_header', idx=idx, source=source)}")
-        console.print(t("explain_match_score", score=score_pct))
-        console.print(t("explain_keywords", matched=keyword_match_count, total=total_keywords, keywords=kw_display))
-        
-        # Display matching details
-        console.print(t("explain_details_header"))
-        console.print(t("explain_semantic_score", score=semantic_pct))
-        console.print(t("explain_keyword_score", score=keyword_pct))
-        console.print(t("explain_final_score", score=score_pct))
-        
-        # Display Abstract
+        # Display abstract
         if abstract:
-            console.print(f"   {t('explain_abstract_label')} {abstract}")
+            console.print(f"   📖 [bold]Abstract:[/bold] {abstract[:200]}{'...' if len(abstract) > 200 else ''}")
         
-        # Display excerpts preview
+        # Display content preview
         if excerpts:
-            console.print(t("explain_content_preview"))
-            console.print("-" * 40)
-            for e in excerpts:
-                console.print(f"- {e.strip()}")
-            console.print("-" * 40)
-        elif not abstract:
-            console.print(f"   [dim]{t('search_no_content')}[/dim]")
+            console.print(f"   📝 [bold]Content Preview:[/bold]")
+            console.print("   " + "-" * 40)
+            for excerpt in excerpts[:3]:  # Show first 3 excerpts
+                preview = excerpt[:150] + "..." if len(excerpt) > 150 else excerpt
+                console.print(f"   - {preview}")
+            if len(excerpts) > 3:
+                console.print(f"   ... and {len(excerpts) - 3} more excerpts")
+            console.print("   " + "-" * 40)
+
 
 @cli.command(help=t("status_desc"))
 def status():

@@ -17,16 +17,47 @@ def load_config():
             # Ensure search config has defaults
             if "search" not in config:
                 config["search"] = {
-                    "min_similarity": 0.5,
-                    "default_top_k": 5
+                    "min_similarity": 0.3,  # Lower threshold for reranked results
+                    "default_top_k": 5,
+                    "optimizer": {
+                        "semantic_weight": 0.40,
+                        "bm25_weight": 0.30,
+                        "keyword_weight": 0.15,
+                        "position_weight": 0.10,
+                        "title_weight": 0.05,
+                        "bm25_k1": 1.5,
+                        "bm25_b": 0.75
+                    }
                 }
+            elif "optimizer" not in config["search"]:
+                config["search"]["optimizer"] = {
+                    "semantic_weight": 0.40,
+                    "bm25_weight": 0.30,
+                    "keyword_weight": 0.15,
+                    "position_weight": 0.10,
+                    "title_weight": 0.05,
+                    "bm25_k1": 1.5,
+                    "bm25_b": 0.75
+                }
+            # Update min_similarity if it's still at old default
+            if config["search"].get("min_similarity", 0.5) == 0.5:
+                config["search"]["min_similarity"] = 0.3
             return config
     return {
         "mode": "embedded", 
         "language": "en",
         "search": {
-            "min_similarity": 0.5,
-            "default_top_k": 5
+            "min_similarity": 0.3,  # Lower threshold for reranked results
+            "default_top_k": 5,
+            "optimizer": {
+                "semantic_weight": 0.40,
+                "bm25_weight": 0.30,
+                "keyword_weight": 0.15,
+                "position_weight": 0.10,
+                "title_weight": 0.05,
+                "bm25_k1": 1.5,
+                "bm25_b": 0.75
+            }
         }
     }
 
@@ -107,8 +138,17 @@ def auto_configure(workspace_dir=None):
         "watch_dirs": [],
         "pdf_parser_strategy": "markitdown",  # "markitdown" or "docling"
         "search": {
-            "min_similarity": 0.5,  # Minimum similarity threshold (0.0-1.0)
-            "default_top_k": 5      # Default number of results
+            "min_similarity": 0.3,  # Minimum similarity threshold (0.0-1.0) - optimized for reranked results
+            "default_top_k": 5,     # Default number of results
+            "optimizer": {
+                "semantic_weight": 0.40,   # Weight for semantic similarity
+                "bm25_weight": 0.30,       # Weight for BM25 relevance
+                "keyword_weight": 0.15,    # Weight for keyword matching
+                "position_weight": 0.10,   # Weight for result position
+                "title_weight": 0.05,      # Weight for title/filename match
+                "bm25_k1": 1.5,            # BM25 term frequency saturation
+                "bm25_b": 0.75             # BM25 length normalization
+            }
         }
     }
 
