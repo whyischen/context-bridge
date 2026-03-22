@@ -8,7 +8,7 @@ with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="cbridge-agent",
-    version="0.1.16",
+    version="0.1.17",
     description="The All-in-One Local Memory Bridge for AI Agents",
     long_description=long_description,
     long_description_content_type="text/markdown",
