@@ -56,6 +56,8 @@ context-bridge/
 
 ## 编码规范
 
+> **请试图理解，什么叫写出优雅的代码。**
+
 1. **跨平台兼容性**：考虑 Mac/Linux/Windows 多端操作
    - 使用 `pathlib.Path` 处理路径，避免硬编码路径分隔符
    - 使用 `os.path.join()` 或 `Path` 对象进行路径操作

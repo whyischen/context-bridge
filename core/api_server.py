@@ -101,8 +101,8 @@ async def search_documents(request: SearchRequest):
                 full_content_path = path_resolver.resolve_path(filename, uri)
             except Exception as e:
                 # Log error but continue with other results
-                import logging
-                logger = logging.getLogger(__name__)
+                from core.utils.logger import get_logger
+                logger = get_logger("api_server")
                 logger.warning(f"Failed to resolve path for {filename}: {e}")
             
             formatted_results.append(SearchResult(

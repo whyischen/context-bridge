@@ -1,9 +1,9 @@
 from core.config import CONFIG
 from core.runtimes.qmd_runtime import QMDRuntime
 from core.managers.openviking_manager import OpenVikingManager
-import logging
+from core.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger("factories")
 
 # Singleton instance cache
 _context_manager_instance = None

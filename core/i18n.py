@@ -72,7 +72,7 @@ MESSAGES = {
         "search_filtered": "[dim]已过滤 {count} 个低相似度结果 (阈值: {threshold:.2f})[/dim]",
         "search_reranked": "[dim]✨ 已根据关键词匹配重新排序[/dim]",
         "search_empty_after_filter": "[yellow]📭 过滤后未找到符合条件的结果。[/yellow]",
-        "search_results_title": "\n[bold cyan]🔍 检索结果: '{query}'[/bold cyan]\n" + "="*40,
+        "search_results_title": "\n[bold cyan]🔍 {count} 检索结果: '{query}'[/bold cyan]\n" + "="*40 + "\n",
         "search_result_item": "\n[bold green]📄 来源:[/bold green] {source} [dim](相似度: {score:.4f})[/dim]\n{line}\n{content}\n",
         "search_result_item_numbered": "\n[bold green]#{idx} 📄 来源:[/bold green] {source} [dim](相似度: {score:.4f})[/dim]\n{line}\n{content}\n",
         
@@ -265,6 +265,10 @@ MESSAGES = {
         "update_start": "[bold cyan]🚀 正在联网升级 ContextBridge...[/bold cyan]",
         "update_success": "[bold green]✅ 升级成功！请重启相关服务以应用更新。[/bold green]",
         "update_failed": "[bold red]❌ 升级失败:[/bold red] {error}",
+        
+        # text_processor.py
+        "abstract_title": "📌 标题",
+        "abstract_summary": "📝 简介",
     },
     "en": {
         # cbridge.py
@@ -336,7 +340,7 @@ MESSAGES = {
         "search_filtered": "[dim]Filtered {count} low-similarity results (threshold: {threshold:.2f})[/dim]",
         "search_reranked": "[dim]✨ Reranked by keyword matching[/dim]",
         "search_empty_after_filter": "[yellow]📭 No results found after filtering.[/yellow]",
-        "search_results_title": "\n[bold cyan]� Search Results: '{query}'[/bold cyan]\n" + "="*40,
+        "search_results_title": "\n[bold cyan]🔍 {count} Search Results: '{query}'[/bold cyan]\n" + "="*40 + "\n",
         "search_result_item": "\n[bold green]📄 Source:[/bold green] {source} [dim](Score: {score:.4f})[/dim]\n{line}\n{content}\n",
         "search_result_item_numbered": "\n[bold green]#{idx} 📄 Source:[/bold green] {source} [dim](Score: {score:.4f})[/dim]\n{line}\n{content}\n",
         
@@ -529,6 +533,10 @@ MESSAGES = {
         "update_start": "[bold cyan]🚀 Updating ContextBridge from network...[/bold cyan]",
         "update_success": "[bold green]✅ Update successful! Please restart related services to apply the update.[/bold green]",
         "update_failed": "[bold red]❌ Update failed:[/bold red] {error}",
+
+        # text_processor.py
+        "abstract_title": "📌 Title",
+        "abstract_summary": "📝 Summary",
     }
 }
 
@@ -543,3 +551,11 @@ def t(key, **kwargs):
         except KeyError:
             return text
     return text
+
+def set_language(lang):
+    """
+    Sets the current session language.
+    Note: To persist this, you must also update CONFIG and call save_config.
+    """
+    if lang in MESSAGES:
+        CONFIG["language"] = lang

@@ -150,5 +150,15 @@ async def main():
     async with stdio_server() as (read_stream, write_stream):
         await app.run(read_stream, write_stream, app.create_initialization_options())
 
+def start_mcp_server(port=None):
+    """
+    Entry point for starting the MCP server.
+    Note: stdio transport doesn't use the port, but kept for API compatibility.
+    """
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    start_mcp_server()

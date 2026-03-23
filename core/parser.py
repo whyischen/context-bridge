@@ -4,7 +4,6 @@ Document Parser Wrapper for ContextBridge
 """
 
 from pathlib import Path
-import logging
 import os
 from typing import Optional
 
@@ -13,17 +12,9 @@ from core.parsers.pdf_parser import PDFParser
 from core.parsers.composite_parser import CompositeParser
 from core.interfaces.parser import BaseParser
 from core.config import CONFIG
+from core.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
-
-# Suppress noisy third-party service logs
-for _noisy_logger in [
-    "docling", "docling.document_converter", "docling.models",
-    "docling.utils", "docling.datamodel", "docling.pipeline",
-    "rapidocr", "RapidOCR", "huggingface_hub", "transformers",
-    "torch", "PIL",
-]:
-    logging.getLogger(_noisy_logger).setLevel(logging.ERROR)
+logger = get_logger("parser")
 
 # Global parser instance
 _current_parser: Optional[BaseParser] = None

@@ -1,5 +1,6 @@
 import re
 from typing import List, Dict
+from core.i18n import t
 
 class MarkdownTextSplitter:
     def __init__(self, chunk_size: int = 800, chunk_overlap: int = 150):
@@ -82,7 +83,7 @@ class HeuristicExtractor:
         if len(first_p) > 200:
             first_p = first_p[:197] + "..."
             
-        return f"【文档标题】: {title}\n【内容简介】: {first_p}"
+        return f"{t('abstract_title')}: {title}\n{t('abstract_summary')}: {first_p}"
 
     @staticmethod
     def extract_l1_outline(content: str) -> str:

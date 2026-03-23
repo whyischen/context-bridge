@@ -6,7 +6,9 @@ from core.interfaces.context_manager import IContextManager
 from core.interfaces.search_runtime import ISearchRuntime
 from core.i18n import t
 
-logger = logging.getLogger(__name__)
+from core.utils.logger import get_logger
+
+logger = get_logger("viking")
 console = Console(stderr=True)
 
 class OpenVikingManager(IContextManager):
