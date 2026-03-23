@@ -1092,21 +1092,11 @@ def status():
     if watcher_pid_file.exists():
         try:
             pid = int(watcher_pid_file.read_text().strip())
-            if sys.platform == "win32":
-                import subprocess
-                result = subprocess.run(
-                    ["tasklist", "/FI", f"PID eq {pid}"],
-                    capture_output=True,
-                    text=True
-                )
-                if str(pid) in result.stdout:
-                    console.print(t("watcher_status_running", pid=pid))
-                else:
-                    console.print(t("watcher_status_stale", pid=pid))
+            if is_process_running(pid):
+                console.print(t("watcher_status_running", pid=pid))
             else:
-                if os.kill(pid, 0) is None:
-                    console.print(t("watcher_status_running", pid=pid))
-        except (ProcessLookupError, ValueError):
+                console.print(t("watcher_status_stale", pid=pid))
+        except (ProcessLookupError, ValueError, PermissionError):
             console.print(t("watcher_status_not_running"))
     else:
         console.print(t("watcher_status_not_running"))
@@ -1116,21 +1106,11 @@ def status():
     if serve_pid_file.exists():
         try:
             pid = int(serve_pid_file.read_text().strip())
-            if sys.platform == "win32":
-                import subprocess
-                result = subprocess.run(
-                    ["tasklist", "/FI", f"PID eq {pid}"],
-                    capture_output=True,
-                    text=True
-                )
-                if str(pid) in result.stdout:
-                    console.print(t("api_status_running", pid=pid))
-                else:
-                    console.print(t("api_status_stale", pid=pid))
+            if is_process_running(pid):
+                console.print(t("api_status_running", pid=pid))
             else:
-                if os.kill(pid, 0) is None:
-                    console.print(t("api_status_running", pid=pid))
-        except (ProcessLookupError, ValueError):
+                console.print(t("api_status_stale", pid=pid))
+        except (ProcessLookupError, ValueError, PermissionError):
             console.print(t("api_status_not_running"))
     else:
         console.print(t("api_status_not_running"))
