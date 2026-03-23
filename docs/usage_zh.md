@@ -2,20 +2,6 @@
 
 **ContextBridge** 是你的本地 AI 知识库助手。它让 Claude Code、Cursor 等 AI 工具直接读懂你电脑上的 Word、PDF、Excel 等文档——无需上传云端，所有数据本地处理，隐私零泄露。
 
----
-
-## 核心特性
-
-| 特性 | 说明 |
-|------|------|
-| 🔒 **本地隐私** | 100% 本地运行，文档不上云，数据不出境 |
-| 📄 **多格式支持** | PDF、Word、Excel、PPTX、Markdown 一键解析 |
-| 🧠 **智能解析** | 默认 MarkItDown 轻量解析，可选 Docling 高精度模式 |
-| ⚡ **实时同步** | 文件夹变动自动感知，索引即时更新 |
-| 🔋 **开箱即用** | 内置 ChromaDB 向量数据库，零配置上手 |
-
----
-
 ## 快速开始（3 分钟上手）
 
 ### 第一步：安装
@@ -32,15 +18,14 @@ cbridge init
 
 按提示选择：
 1. **界面语言**：`zh`（中文）或 `en`（英文）
-2. **工作区目录**：默认 `~/ContextBridge_Workspace`
-3. **是否启动服务**：默认「是」，直接启动后台监控
+2. **工作区目录**：默认 `~/.cbridge`
 
 初始化完成后，服务已在后台运行。
 
 ### 第三步：添加监控文件夹
 
 ```bash
-cbridge watch add /Users/你的用户名/Documents/工作文档
+cbridge watch add /{你的文档/文档目录}
 ```
 
 添加后 ContextBridge 会自动索引该文件夹中的所有文档。
@@ -59,19 +44,17 @@ cbridge serve        # 启动 API 服务（供外部工具调用）
 cbridge stop         # 停止所有后台服务
 ```
 
-> **说明**：`start` 启动文件监控和搜索引擎；`serve` 启动 REST API 服务。日常使用只需 `start`，API 访问才需要 `serve`。
-
 ### 管理监控目录
 
 ```bash
-# 添加监控目录（支持多个）
-cbridge watch add /path/to/新文件夹
+# 添加监控目录
+cbridge watch add /path/to/documents
 
 # 查看已监控目录
 cbridge watch list
 
 # 移除监控
-cbridge watch remove /path/to/文件夹
+cbridge watch remove /path/to/documents
 ```
 
 ### 🔍 命令行搜索测试
@@ -80,10 +63,7 @@ cbridge watch remove /path/to/文件夹
 
 ```bash
 # 自然语言查询
-cbridge search "Q3 季度销售数据是多少"
-
-# 模糊匹配也能找到
-cbridge search "帮我找那份合同里的付款条款"
+cbridge search "Q3 季度销售数据"
 ```
 
 ### 🌐 接入 AI 工具（MCP）
@@ -134,8 +114,6 @@ parser:
 cbridge index
 ```
 
-> 提示：`cbridge start` 已包含自动索引，通常无需手动执行。
-
 ### 切换语言
 
 ```bash
@@ -147,7 +125,6 @@ cbridge lang zh    # 切换中文
 
 ```bash
 cbridge status     # 查看服务状态
-cbridge config     # 查看配置文件
 ```
 
 ---

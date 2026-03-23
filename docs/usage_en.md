@@ -2,20 +2,6 @@
 
 **ContextBridge** is your local AI knowledge base assistant. It enables Claude Code, Cursor, and other AI tools to read and understand Word, PDF, Excel, and other documents on your computer—no cloud uploads needed, all data processed locally with absolute privacy.
 
----
-
-## Core Features
-
-| Feature | Description |
-|---------|-------------|
-| 🔒 **Local Privacy** | 100% local execution, documents never leave your machine |
-| 📄 **Multi-format Support** | One-click parsing for PDF, Word, Excel, PPTX, Markdown |
-| 🧠 **Smart Parsing** | MarkItDown by default (lightweight), optional Docling for high precision |
-| ⚡ **Real-time Sync** | Auto-detect folder changes, instant index updates |
-| 🔋 **Ready to Use** | Built-in ChromaDB vector database, zero configuration |
-
----
-
 ## Quick Start (3 Minutes)
 
 ### Step 1: Installation
@@ -32,18 +18,17 @@ cbridge init
 
 Follow the prompts to choose:
 1. **Interface Language**: `en` (English) or `zh` (Chinese)
-2. **Workspace Directory**: Default is `~/ContextBridge_Workspace`
-3. **Start Service**: Default is "Yes"—starts background monitoring immediately
+2. **Workspace Directory**: Default is `~/.cbridge`
 
 After initialization, the service is already running in the background.
 
 ### Step 3: Add a Folder to Watch
 
 ```bash
-cbridge watch add /Users/yourname/Documents/work-docs
+cbridge watch add /path/to/your/documents
 ```
 
-ContextBridge will automatically index all documents in this folder.
+After adding, ContextBridge will automatically index all documents in this folder.
 
 ---
 
@@ -58,8 +43,6 @@ cbridge start        # Start background monitoring (Watcher + Vector DB)
 cbridge serve        # Start API server (for external tool access)
 cbridge stop         # Stop all background services
 ```
-
-> **Note**: `start` launches file monitoring and search engine; `serve` starts the REST API server. For daily use, `start` is sufficient—only use `serve` for API access.
 
 ### Manage Watched Directories
 
@@ -76,14 +59,11 @@ cbridge watch remove /path/to/folder
 
 ### 🔍 Test Search via CLI
 
-Test search without opening your AI tool:
+Test search directly in your terminal without opening AI tools:
 
 ```bash
 # Natural language query
-cbridge search "What was the Q3 revenue figure"
-
-# Fuzzy matching also works
-cbridge search "Find the payment terms in that contract"
+cbridge search "Q3 sales data"
 ```
 
 ### 🌐 Connect to AI Tools (MCP)
@@ -134,8 +114,6 @@ Force a full vector index rebuild when needed:
 cbridge index
 ```
 
-> **Tip**: `cbridge start` includes automatic indexing, so manual rebuild is rarely needed.
-
 ### Switch Language
 
 ```bash
@@ -147,7 +125,6 @@ cbridge lang zh    # Switch to Chinese
 
 ```bash
 cbridge status     # View service status
-cbridge config     # View configuration file
 ```
 
 ---
