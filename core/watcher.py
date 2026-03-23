@@ -9,12 +9,89 @@ from pathlib import Path
 from rich.console import Console
 from core.config import RAW_DOCS_DIR, PARSED_DOCS_DIR, get_watch_dirs, CONFIG, add_watch_dir, remove_watch_dir
 from core.parser import parse_document, SUPPORTED_EXTENSIONS
+import json
+import socket
+import gc
+from core.config import RAW_DOCS_DIR, PARSED_DOCS_DIR, get_watch_dirs, CONFIG, add_watch_dir, remove_watch_dir
+from core.parser import parse_document, SUPPORTED_EXTENSIONS
 from core.factories import initialize_system
 from tqdm import tqdm
 from core.i18n import t
 from core.utils.logger import get_logger
 
 logger = get_logger("watcher")
+
+# Global reference for lazy loading and caching
+_context_manager = None
+_last_activity_time = time.time()
+_model_lock = threading.Lock()
+# RPC Configuration (local only)
+RPC_PORT = float(CONFIG.get("watcher", {}).get("rpc_port", 11405))
+IDLE_TIMEOUT = 10 * 60 # 10 minutes
+
+def get_cm():
+    """Thread-safe lazy initializer for the context manager."""
+    global _context_manager, _last_activity_time
+    with _model_lock:
+        _last_activity_time = time.time()
+        if _context_manager is None:
+            logger.info("Initializing embedding model cache in Watcher process...")
+            _context_manager = initialize_system()
+        return _context_manager
+
+def _idle_cleanup_loop():
+    """Background thread to unload model if idle for too long."""
+    global _context_manager
+    while True:
+        time.sleep(60)
+        with _model_lock:
+            if _context_manager and (time.time() - _last_activity_time > IDLE_TIMEOUT):
+                logger.info("Model cache idle for 10 minutes, unloading to save memory.")
+                _context_manager = None
+                gc.collect()
+
+def _rpc_server_loop():
+    """Lightweight internal RPC server for CLI search requests."""
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        server.bind(('127.0.0.1', int(RPC_PORT)))
+        server.listen(5)
+        logger.info(f"Internal Search RPC started on port {int(RPC_PORT)}")
+        
+        while True:
+            client, addr = server.accept()
+            try:
+                data = client.recv(4096).decode('utf-8')
+                if not data: continue
+                
+                request = json.loads(data)
+                if request.get("action") == "search":
+                    query = request.get("query")
+                    top_k = request.get("top_k", 5)
+                    threshold = request.get("threshold", 0.3)
+                    explain = request.get("explain", False)
+                    
+                    # This will trigger lazy load and reset activity timer
+                    cm = get_cm()
+                    results = cm.recursive_retrieve(
+                        query=query, 
+                        top_k=top_k, 
+                        min_similarity=threshold,
+                        explain=explain
+                    )
+                    
+                    client.send(json.dumps({"status": "success", "results": results}).encode('utf-8'))
+            except Exception as e:
+                logger.error(f"RPC Error: {e}")
+                try: client.send(json.dumps({"status": "error", "message": str(e)}).encode('utf-8'))
+                except: pass
+            finally:
+                client.close()
+    except Exception as e:
+        logger.error(f"Failed to start RPC server: {e}")
+    finally:
+        server.close()
 
 # Removed log_and_print as it's now handled by the unified logger
 
@@ -59,7 +136,7 @@ _resource_monitor = {
     "last_check": 0
 }
 
-def _worker_loop(context_manager):
+def _worker_loop():
     """Background worker to process files from the queue."""
     try:
         while True:
@@ -68,6 +145,9 @@ def _worker_loop(context_manager):
                 if action == "stop":
                     task_queue.task_done()
                     break
+                
+                # Get CM (will reload if needed)
+                context_manager = get_cm()
                 
                 path = Path(file_path)
                 if action == "deleted":
@@ -185,7 +265,7 @@ def index_dir(directory: Path, show_progress=True, skip_scan_log=False):
     # Temporarily suppress general warnings like pydub to avoid spamming the progress bar
     warnings.filterwarnings("ignore")
         
-    context_manager = initialize_system()
+    context_manager = get_cm()
     all_files = []
         
     # 扫描阶段
@@ -262,7 +342,7 @@ def index_dir(directory: Path, show_progress=True, skip_scan_log=False):
     }
 
 def index_all():
-    context_manager = initialize_system()
+    context_manager = get_cm()
     watch_dirs = get_watch_dirs()
     
     all_files = []
@@ -311,13 +391,15 @@ def index_all():
     logger.info(t("idx_complete"))
 
 def start_watching():
-    try:
-        context_manager = initialize_system()
-    except Exception as e:
-        logger.error(t("watch_init_failed", error=e))
-        import traceback
-        logger.error(traceback.format_exc())
-        return
+    # Model initialization is now handled lazily by get_cm()
+    
+    # Start internal RPC server
+    rpc_thread = threading.Thread(target=_rpc_server_loop, daemon=True)
+    rpc_thread.start()
+    
+    # Start idle cleanup thread
+    cleanup_thread = threading.Thread(target=_idle_cleanup_loop, daemon=True)
+    cleanup_thread.start()
     
     # 输出性能模式信息
     logger.info(t("watch_performance_mode", mode=PERFORMANCE_MODE.upper()))
@@ -330,12 +412,13 @@ def start_watching():
     # Start worker threads for async parsing
     worker_threads = []
     for i in range(WORKER_THREADS):
-        worker_thread = threading.Thread(target=_worker_loop, args=(context_manager,), daemon=True)
+        # Worker no longer needs CM passed in, uses get_cm() internally
+        worker_thread = threading.Thread(target=_worker_loop, daemon=True)
         worker_thread.start()
         worker_threads.append(worker_thread)
     logger.info(t("watch_workers_started", count=WORKER_THREADS))
     
-    event_handler = DocumentHandler(context_manager)
+    event_handler = DocumentHandler(None) # CM will be fetched inside workers or handlers if needed
     observer = PollingObserver(timeout=POLL_INTERVAL)  # 使用配置的轮询间隔
     
     watched_dirs = set()

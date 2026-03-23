@@ -96,7 +96,7 @@ def init():
         console.print(t("init_starting_daemon"))
         # We start the watcher (which covers both watch and serve for simple use)
         # Using sys.executable to ensure we use the same python environment
-        cmd = f'"{sys.executable}" "{os.path.abspath(__file__)}" start'
+        cmd = [sys.executable, os.path.abspath(__file__), "start", "--foreground"]
         pid = start_background_process(cmd, WATCHER_PID_FILE, "cbridge-watcher.log")
         if pid:
             console.print(t("init_complete"))
@@ -151,7 +151,7 @@ def start(foreground):
     if foreground:
         start_watching()
     else:
-        cmd = f'"{sys.executable}" "{os.path.abspath(__file__)}" start --foreground'
+        cmd = [sys.executable, os.path.abspath(__file__), "start", "--foreground"]
         pid = start_background_process(cmd, WATCHER_PID_FILE, "cbridge-watcher.log")
         if pid:
             console.print(t("watcher_started_bg", pid=pid))
@@ -255,15 +255,65 @@ def logs(follow, lines, service):
 @click.option('--threshold', type=float)
 @click.option('--explain', is_flag=True)
 def search(query, top_k, threshold, explain):
-    from core.utils.path_resolver import PathResolver
+    import json
+    import socket
+    from core.utils.process import get_process_status, WATCHER_PID_FILE, start_background_process
     
-    context_manager = initialize_system()
-    results = context_manager.recursive_retrieve(
-        query=query, 
-        top_k=top_k or 5, 
-        min_similarity=threshold or 0.3,
-        explain=explain
-    )
+    # Try to use Watcher's internal RPC to avoid model reload delay
+    status, pid = get_process_status(WATCHER_PID_FILE)
+    results = None
+    proxy_success = False
+    
+    # RPC Port (should match core.watcher.RPC_PORT)
+    RPC_PORT = 11405
+    
+    if status == "running":
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(5.0)
+                s.connect(('127.0.0.1', RPC_PORT))
+                
+                req_data = json.dumps({
+                    "action": "search",
+                    "query": query,
+                    "top_k": top_k or 5,
+                    "threshold": threshold or 0.3,
+                    "explain": explain
+                })
+                s.sendall(req_data.encode('utf-8'))
+                
+                # Receive response
+                response_chunks = []
+                while True:
+                    chunk = s.recv(4096)
+                    if not chunk: break
+                    response_chunks.append(chunk)
+                
+                full_response = b"".join(response_chunks).decode('utf-8')
+                if full_response:
+                    resp_data = json.loads(full_response)
+                    if resp_data.get("status") == "success":
+                        results = resp_data.get('results', [])
+                        proxy_success = True
+        except Exception as e:
+            logger.debug(f"Watcher RPC Search failed, falling back to local: {e}")
+
+    if not proxy_success:
+        # Fallback to local search
+        from core.factories import initialize_system
+        context_manager = initialize_system()
+        results = context_manager.recursive_retrieve(
+            query=query, 
+            top_k=top_k or 5, 
+            min_similarity=threshold or 0.3,
+            explain=explain
+        )
+        
+        # If watcher wasn't running, start it in background to cache model for next time
+        if status != "running":
+            logger.debug("Starting background Watcher for model caching...")
+            cmd = [sys.executable, os.path.abspath(__file__), "start", "--foreground"]
+            start_background_process(cmd, WATCHER_PID_FILE, "cbridge-watcher.log")
     
     if not results:
         console.print(t("search_empty"))
@@ -272,6 +322,7 @@ def search(query, top_k, threshold, explain):
     # Print results count
     console.print(t("search_results_title", count=len(results), query=query))
 
+    from core.utils.path_resolver import PathResolver
     resolver = PathResolver({'watch_dirs': get_watch_dirs(), 'parsed_docs_dir': PARSED_DOCS_DIR})
     
     for idx, res in enumerate(results, 1):

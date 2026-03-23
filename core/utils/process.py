@@ -3,7 +3,7 @@ import sys
 import signal
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple, Any
+from typing import List, Optional, Tuple, Any, Union
 from core.utils.logger import get_logger
 from core.i18n import t
 
@@ -54,7 +54,7 @@ def get_pid_from_file(pid_file: Path) -> Optional[int]:
             pass
     return None
 
-def start_background_process(cmd_str: str, pid_file: Path, log_file: str) -> Optional[int]:
+def start_background_process(cmd_args: Union[str, List[str]], pid_file: Path, log_file: str) -> Optional[int]:
     """Start a command in background and save its PID."""
     # Ensure logs dir exists
     log_dir = Path(os.path.expanduser("~/.cbridge/logs"))
@@ -65,24 +65,42 @@ def start_background_process(cmd_str: str, pid_file: Path, log_file: str) -> Opt
     # PID file dir
     pid_file.parent.mkdir(parents=True, exist_ok=True)
     
+    # Check for pythonw on Windows (specifically for hiding windows)
+    if sys.platform == "win32" and isinstance(cmd_args, list):
+        if cmd_args[0].endswith("python.exe"):
+            pythonw = cmd_args[0].replace("python.exe", "pythonw.exe")
+            if os.path.exists(pythonw):
+                cmd_args[0] = pythonw
+
     with open(log_path, "a", encoding="utf-8") as f:
         try:
             if sys.platform == "win32":
-                # Special flag to hide window on Windows
+                # Most robust way to start a truly invisible background process on Windows
+                si = subprocess.STARTUPINFO()
+                si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                si.wShowWindow = 0 # SW_HIDE
+                
+                # If it's a list, shell=False is quieter
+                use_shell = isinstance(cmd_args, str)
+                
                 process = subprocess.Popen(
-                    cmd_str,
+                    cmd_args,
                     stdout=f,
                     stderr=f,
-                    creationflags=subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS,
-                    shell=True
+                    # Combine flags for maximum concealment and separation
+                    creationflags=subprocess.CREATE_NO_WINDOW | 
+                                 subprocess.DETACHED_PROCESS | 
+                                 subprocess.CREATE_NEW_PROCESS_GROUP,
+                    startupinfo=si,
+                    shell=use_shell
                 )
             else:
                 process = subprocess.Popen(
-                    cmd_str,
+                    cmd_args,
                     stdout=f,
                     stderr=f,
                     preexec_fn=os.setsid,
-                    shell=True
+                    shell=isinstance(cmd_args, str)
                 )
             
             pid = process.pid

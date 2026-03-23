@@ -8,12 +8,47 @@ from core.factories import initialize_system
 from core.config import get_watch_dirs, add_watch_dir, remove_watch_dir, CONFIG, save_config, PARSED_DOCS_DIR
 from core.watcher import index_all
 from core.utils.path_resolver import PathResolver
+import time
+import threading
+import signal
+from core.utils.logger import get_logger
+
+logger = get_logger("api_server")
+
+# Activity tracking for auto-shutdown
+_last_activity_time = time.time()
+_auto_shutdown_minutes = CONFIG.get("server", {}).get("idle_timeout", 10)
+
+def update_activity():
+    global _last_activity_time
+    _last_activity_time = time.time()
+
+def idle_monitor():
+    """Background thread to check for inactivity and shut down if idle."""
+    if _auto_shutdown_minutes <= 0:
+        return
+        
+    logger.info(f"Idle monitor started, timeout: {_auto_shutdown_minutes} minutes")
+    while True:
+        time.sleep(60) # Check every minute
+        idle_seconds = time.time() - _last_activity_time
+        if idle_seconds > (_auto_shutdown_minutes * 60):
+            logger.info(f"Server idle for {idle_seconds/60:.1f} minutes. Shutting down to clear model cache.")
+            # Trigger graceful shutdown
+            os.kill(os.getpid(), signal.SIGINT)
+            break
 
 app = FastAPI(
     title="ContextBridge Local API",
     description="Local Knowledge Engine API for AI Agents (e.g., OpenClaw)",
     version="1.0.0"
 )
+
+@app.on_event("startup")
+async def startup_event():
+    # Start idle monitor thread
+    monitor_thread = threading.Thread(target=idle_monitor, daemon=True)
+    monitor_thread.start()
 
 # Initialize context manager lazily
 _context_manager = None
@@ -65,6 +100,7 @@ async def search_documents(request: SearchRequest):
     - explain: Include detailed score breakdown in metadata (default: False)
     """
     try:
+        update_activity()
         cm = get_context_manager()
         results = cm.recursive_retrieve(
             query=request.query, 
