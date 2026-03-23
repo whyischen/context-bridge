@@ -14,7 +14,7 @@ ContextBridge 的原生技能已发布至[ClawHub.ai](https://clawhub.ai/)。我
 如果你已经在运行 OpenClaw，你可以直接通过自然语言让 AI 替你完成安装：
 
 > **💬 对话示例：**
-> _"为我安装 local-context-bridge  skill"_
+> _"为我安装 local-context-bridge-cn skill"_
 
 OpenClaw 会自动解析意图并引导你完成后续的安装流程。
 

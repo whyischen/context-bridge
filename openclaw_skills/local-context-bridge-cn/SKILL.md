@@ -1,7 +1,7 @@
 ---
 name: local-context-bridge
 description: "使用语义关键词搜索本地个人和内部文档(Word/Excel/PDF/Markdown)。当用户询问本地文件、私人数据或内部知识时使用此工具。它会返回高度相关的文本片段和文件路径。注意：始终使用提取的核心实体作为关键词，而不是完整句子。"
-metadata: 
+metadata: { openclaw: { emoji: "🌉", requires: { bins: [pip] } } }
 ---
 
 # ContextBridge 知识库

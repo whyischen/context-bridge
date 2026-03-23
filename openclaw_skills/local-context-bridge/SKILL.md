@@ -3,8 +3,9 @@ name: local-context-bridge
 description: >
   Search local personal and internal documents (Word, Excel, PDF, Markdown) using semantic keywords. 
   Use this tool when the user asks about local files, private data, or internal knowledge. 
-  It returns highly relevant text snippets and file paths. Note: Always use extracted core entities as keywords, not full sentences.
-metadata: 
+  It returns highly relevant text snippets and file paths. 
+  Note: Always use extracted core entities as keywords, not full conversational sentences.
+metadata: { openclaw: { emoji: "🌉", requires: { bins: [pip] } } }
 ---
 
 # ContextBridge Knowledge Base
