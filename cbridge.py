@@ -276,8 +276,8 @@ def search(query, top_k, threshold, explain):
                 req_data = json.dumps({
                     "action": "search",
                     "query": query,
-                    "top_k": top_k or 5,
-                    "threshold": threshold or 0.3,
+                    "top_k": top_k,
+                    "threshold": threshold,
                     "explain": explain
                 })
                 s.sendall(req_data.encode('utf-8'))
@@ -304,8 +304,8 @@ def search(query, top_k, threshold, explain):
         context_manager = initialize_system()
         results = context_manager.recursive_retrieve(
             query=query, 
-            top_k=top_k or 5, 
-            min_similarity=threshold or 0.3,
+            top_k=top_k, 
+            min_similarity=threshold,
             explain=explain
         )
         

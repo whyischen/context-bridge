@@ -22,7 +22,7 @@ def load_config():
             # Ensure search config has defaults
             if "search" not in config:
                 config["search"] = {
-                    "min_similarity": 0.3,  # Lower threshold for reranked results
+                    "min_similarity": 0.5,  # Lower threshold for reranked results
                     "default_top_k": 5,
                     "optimizer": {
                         "semantic_weight": 0.40,
@@ -109,68 +109,6 @@ def remove_watch_dir(path_str):
         save_config(CONFIG)
         return True
     return False
-
-def is_configured() -> bool:
-    """
-    检查 ContextBridge 是否已配置。
-    
-    Returns:
-        True 如果配置文件存在，否则 False
-    """
-    return CONFIG_PATH.exists()
-
-def auto_configure(workspace_dir=None):
-    """
-    自动检测环境并生成配置。
-
-    Args:
-        workspace_dir: 可选的自定义工作区目录
-
-    Returns:
-        配置结果字典
-    """
-    from typing import Dict, Any, Optional
-
-    # 检查是否已配置
-    if is_configured():
-        return {
-            "status": "already_configured",
-            "message": "ContextBridge is already configured",
-            "config": CONFIG
-        }
-
-    # 生成配置（始终使用 embedded 模式）
-    config_data = {
-        "mode": "embedded",
-        "workspace_dir": workspace_dir or str(Path.home() / ".cbridge" / "workspace"),
-        "watch_dirs": [],
-        "pdf_parser_strategy": "markitdown",  # "markitdown" or "docling"
-        "embedding": {
-            "model": "gte-small-zh"  # "gte-small-zh" or "chromadb-default"
-        },
-        "search": {
-            "min_similarity": 0.3,  # Minimum similarity threshold (0.0-1.0) - optimized for reranked results
-            "default_top_k": 5,     # Default number of results
-            "optimizer": {
-                "semantic_weight": 0.40,   # Weight for semantic similarity
-                "bm25_weight": 0.30,       # Weight for BM25 relevance
-                "keyword_weight": 0.15,    # Weight for keyword matching
-                "position_weight": 0.10,   # Weight for result position
-                "title_weight": 0.05,      # Weight for title/filename match
-                "bm25_k1": 1.5,            # BM25 term frequency saturation
-                "bm25_b": 0.75             # BM25 length normalization
-            }
-        }
-    }
-
-    # 保存配置
-    save_config(config_data)
-
-    return {
-        "status": "success",
-        "workspace": config_data["workspace_dir"],
-        "message": "ContextBridge configured in embedded mode"
-    }
 
 def init_workspace():
     RAW_DOCS_DIR.mkdir(parents=True, exist_ok=True)

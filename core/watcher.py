@@ -68,8 +68,8 @@ def _rpc_server_loop():
                 request = json.loads(data)
                 if request.get("action") == "search":
                     query = request.get("query")
-                    top_k = request.get("top_k", 5)
-                    threshold = request.get("threshold", 0.3)
+                    top_k = request.get("top_k")
+                    threshold = request.get("threshold")
                     explain = request.get("explain", False)
                     
                     # This will trigger lazy load and reset activity timer
