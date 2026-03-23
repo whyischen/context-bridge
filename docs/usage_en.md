@@ -94,10 +94,13 @@ The AI will automatically query ContextBridge to retrieve context from your loca
 
 ContextBridge supports two document parsing strategies:
 
-| Strategy | Characteristics | Best For |
-|----------|-----------------|----------|
-| **MarkItDown** (Default) | Lightweight and fast, low resource usage | Daily document processing |
-| **Docling** | High precision, preserves complex layouts | Academic papers, complex tables |
+- **MarkItDown** (Default)
+  - Lightweight and fast, low resource usage
+  - Best for: Daily document processing
+
+- **Docling**
+  - High precision, preserves complex layouts
+  - Best for: Academic papers, complex tables
 
 Modify the parsing strategy in your config file:
 
@@ -131,14 +134,12 @@ cbridge status     # View service status
 
 ## Supported File Formats
 
-| Format | Extensions | Notes |
-|--------|------------|-------|
-| PDF | `.pdf` | Supports both scanned (OCR) and text-based |
-| Word | `.docx`, `.doc` | Preserves heading hierarchy |
-| Excel | `.xlsx`, `.xls` | Parses tables as Markdown tables |
-| PowerPoint | `.pptx`, `.ppt` | Extracts content from each slide |
-| Markdown | `.md` | Native support |
-| Text Files | `.txt`, `.csv` | Direct reading |
+- **PDF** (`.pdf`) — Supports both scanned (OCR) and text-based
+- **Word** (`.docx`, `.doc`) — Preserves heading hierarchy
+- **Excel** (`.xlsx`, `.xls`) — Parses tables as Markdown tables
+- **PowerPoint** (`.pptx`, `.ppt`) — Extracts content from each slide
+- **Markdown** (`.md`) — Native support
+- **Text Files** (`.txt`, `.csv`) — Direct reading
 
 ---
 
