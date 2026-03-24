@@ -10,6 +10,8 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://badge.fury.io/py/cbridge-agent.svg)](https://badge.fury.io/py/cbridge-agent)
 
+🌐 **Official Website**: [https://contextbridge.chat](https://contextbridge.chat)
+
 ## OpenClaw Skill
 
 Native skills for ContextBridge [local-context-bridge](https://clawhub.ai/whyischen/local-context-bridge)  are available on [clawhub.ai](https://clawhub.ai/).

@@ -10,6 +10,8 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://badge.fury.io/py/cbridge-agent.svg)](https://badge.fury.io/py/cbridge-agent)
 
+🌐 **官方网站**: [https://contextbridge.chat](https://contextbridge.chat)
+
 ## OpenClaw Skill
 
 ContextBridge 的原生 skill [local-context-bridge](https://clawhub.ai/whyischen/local-context-bridge-cn) 已发布至[clawhub.ai](https://clawhub.ai/)。
