@@ -1,3 +1,5 @@
+![Banner](public/banner.png)
+
 [**🇨🇳 中文**](README_zh-CN.md) | [**🇬🇧 English**](README.md)
 
 # ContextBridge (cbridge-agent)
