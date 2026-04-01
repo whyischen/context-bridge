@@ -89,17 +89,6 @@ flowchart TD
 
 ---
 
-## 🤖 自动化脚本
-
-| 脚本 | 用途 | 命令 |
-|------|------|------|
-| `search.py` | 语义搜索（带重试） | `python scripts/search.py "关键词"` |
-| `health-check.py` | 健康检查 | `python scripts/health-check.py` |
-| `sync-index.py` | 强制同步索引 | `python scripts/sync-index.py` |
-| `add-watch.py` | 添加监控目录 | `python scripts/add-watch.py <path>` |
-
----
-
 ## 🔧 故障排查
 
 详见 [`references/troubleshooting.md`](references/troubleshooting.md)
