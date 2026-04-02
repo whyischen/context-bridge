@@ -51,9 +51,14 @@ def load_config():
             # Ensure chunking config has defaults
             if "chunking" not in config:
                 config["chunking"] = {
+                    "strategy": "semantic",  # 默认使用语义分块策略
                     "chunk_size": 800,
                     "chunk_overlap": 150,
-                    "use_hybrid_splitter": False
+                    "use_hybrid_splitter": False,
+                    "semantic": {
+                        "use_percentile": True,
+                        "percentile_threshold": 80
+                    }
                 }
 
             return config
@@ -69,9 +74,14 @@ def load_config():
             "optimizer": {
                 "semantic_weight": 0.40,
         "chunking": {
+            "strategy": "semantic",  # 默认使用语义分块策略
             "chunk_size": 800,
             "chunk_overlap": 150,
-            "use_hybrid_splitter": False
+            "use_hybrid_splitter": False,
+            "semantic": {
+                "use_percentile": True,
+                "percentile_threshold": 80
+            }
         },
 
                 "bm25_weight": 0.30,

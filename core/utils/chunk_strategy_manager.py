@@ -442,10 +442,283 @@ class CustomChunkStrategy(BaseChunkStrategy):
         return meta
 
 
+class SemanticChunkStrategy(BaseChunkStrategy):
+    """语义分块策略 - 基于句子嵌入相似度的智能分割"""
+    
+    def __init__(self, chunk_size: int = 800, chunk_overlap: int = 150, 
+                 similarity_threshold: float = 0.5, use_percentile: bool = True,
+                 percentile_threshold: int = 80):
+        super().__init__("semantic", "1.0.0")
+        self._validate_params(chunk_size, chunk_overlap, similarity_threshold, percentile_threshold)
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.similarity_threshold = similarity_threshold
+        self.use_percentile = use_percentile
+        self.percentile_threshold = percentile_threshold
+        self._embedding_model = None
+    
+    @staticmethod
+    def _validate_params(chunk_size: int, chunk_overlap: int, 
+                        similarity_threshold: float, percentile_threshold: int) -> None:
+        """验证参数合法性"""
+        if chunk_size <= 0:
+            raise ValueError(f"chunk_size must be positive, got {chunk_size}")
+        if chunk_overlap < 0:
+            raise ValueError(f"chunk_overlap must be non-negative, got {chunk_overlap}")
+        if chunk_overlap >= chunk_size:
+            raise ValueError(f"chunk_overlap ({chunk_overlap}) must be less than chunk_size ({chunk_size})")
+        if not 0 <= similarity_threshold <= 1:
+            raise ValueError(f"similarity_threshold must be between 0 and 1, got {similarity_threshold}")
+        if not 0 <= percentile_threshold <= 100:
+            raise ValueError(f"percentile_threshold must be between 0 and 100, got {percentile_threshold}")
+    
+    def _get_embedding_model(self):
+        """延迟加载嵌入模型"""
+        if self._embedding_model is None:
+            try:
+                from core.embeddings.gte_small_zh import GTESmallZhONNX
+                self._embedding_model = GTESmallZhONNX()
+                logger.debug("Loaded GTE-Small-Zh embedding model for semantic chunking")
+            except Exception as e:
+                logger.error(f"Failed to load embedding model: {e}")
+                raise RuntimeError(f"Cannot initialize semantic chunking without embedding model: {e}")
+        return self._embedding_model
+    
+    def _split_sentences(self, text: str) -> List[str]:
+        """将文本分割为句子"""
+        # 支持中英文句子分割
+        import re
+        # 中文句号、英文句号、问号、感叹号后跟空白符
+        pattern = r'(?<=[。！？.?!])\s+'
+        sentences = re.split(pattern, text)
+        return [s.strip() for s in sentences if s.strip()]
+    
+    def _combine_sentences(self, sentences: List[str]) -> List[str]:
+        """为每个句子添加上下文窗口（前一句 + 当前句 + 后一句）"""
+        combined = []
+        for i in range(len(sentences)):
+            parts = [sentences[i]]
+            if i > 0:
+                parts.insert(0, sentences[i-1])
+            if i < len(sentences) - 1:
+                parts.append(sentences[i+1])
+            combined.append(' '.join(parts))
+        return combined
+    
+    def _calculate_cosine_distances(self, embeddings: List[List[float]]) -> List[float]:
+        """计算相邻句子嵌入的余弦距离"""
+        import numpy as np
+        distances = []
+        for i in range(len(embeddings) - 1):
+            vec1 = np.array(embeddings[i])
+            vec2 = np.array(embeddings[i + 1])
+            # 余弦相似度
+            similarity = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+            # 余弦距离 = 1 - 相似度
+            distance = 1 - similarity
+            distances.append(distance)
+        return distances
+    
+    def split(self, text: str, **kwargs) -> List[str]:
+        chunk_size = kwargs.get("chunk_size", self.chunk_size)
+        chunk_overlap = kwargs.get("chunk_overlap", self.chunk_overlap)
+        similarity_threshold = kwargs.get("similarity_threshold", self.similarity_threshold)
+        use_percentile = kwargs.get("use_percentile", self.use_percentile)
+        percentile_threshold = kwargs.get("percentile_threshold", self.percentile_threshold)
+        
+        # 验证运行时参数
+        self._validate_params(chunk_size, chunk_overlap, similarity_threshold, percentile_threshold)
+        
+        if not text:
+            return []
+        
+        # 1. 分割句子
+        sentences = self._split_sentences(text)
+        if len(sentences) <= 1:
+            return [text]
+        
+        # 2. 添加上下文窗口
+        combined_sentences = self._combine_sentences(sentences)
+        
+        # 3. 生成嵌入
+        model = self._get_embedding_model()
+        embeddings = model.embed_batch(combined_sentences)
+        
+        # 4. 计算余弦距离
+        distances = self._calculate_cosine_distances(embeddings)
+        
+        # 5. 确定分块边界
+        if use_percentile:
+            import numpy as np
+            threshold = np.percentile(distances, percentile_threshold)
+        else:
+            threshold = similarity_threshold
+        
+        breakpoint_indices = [i for i, dist in enumerate(distances) if dist > threshold]
+        
+        # 6. 创建分块
+        chunks = []
+        start_idx = 0
+        
+        for bp_idx in breakpoint_indices:
+            chunk_sentences = sentences[start_idx:bp_idx + 1]
+            chunk_text = ' '.join(chunk_sentences)
+            
+            # 如果分块过大，进一步分割
+            if len(chunk_text) > chunk_size:
+                sub_chunks = self._split_large_chunk(chunk_text, chunk_size, chunk_overlap)
+                chunks.extend(sub_chunks)
+            else:
+                chunks.append(chunk_text)
+            
+            start_idx = bp_idx + 1
+        
+        # 添加最后一个分块
+        if start_idx < len(sentences):
+            chunk_text = ' '.join(sentences[start_idx:])
+            if len(chunk_text) > chunk_size:
+                sub_chunks = self._split_large_chunk(chunk_text, chunk_size, chunk_overlap)
+                chunks.extend(sub_chunks)
+            else:
+                chunks.append(chunk_text)
+        
+        return [c for c in chunks if c.strip()]
+    
+    def _split_large_chunk(self, text: str, chunk_size: int, chunk_overlap: int) -> List[str]:
+        """对超大分块按字符级别分割"""
+        chunks = []
+        start = 0
+        
+        while start < len(text):
+            end = min(start + chunk_size, len(text))
+            
+            # 尝试在空白符处断开
+            if end < len(text):
+                last_space = text.rfind(' ', start, end)
+                if last_space > start:
+                    end = last_space + 1
+            
+            chunk = text[start:end].strip()
+            if chunk:
+                chunks.append(chunk)
+            
+            start = end - chunk_overlap if end < len(text) else end
+        
+        return chunks
+    
+    def extract_l0_abstract(self, filename: str, content: str) -> str:
+        """
+        提取 L0 摘要 - 基于语义理解提取文档摘要
+        
+        Args:
+            filename: 文件名
+            content: 文档内容
+            
+        Returns:
+            L0 摘要字符串
+        """
+        from core.i18n import t
+        import re
+        
+        # 提取标题
+        title_match = re.search(r'^\s*#+\s+(.+)$', content, re.MULTILINE)
+        title = title_match.group(1).strip() if title_match else filename
+        
+        # 去除标题行
+        content_without_title = re.sub(r'^\s*#+\s+.+$', '', content, count=1, flags=re.MULTILINE)
+        
+        # 提取前几个句子作为摘要（更符合语义）
+        sentences = self._split_sentences(content_without_title.strip())
+        
+        # 取前 2-3 个句子，但不超过 200 字符
+        summary_sentences = []
+        summary_length = 0
+        for sentence in sentences[:3]:  # 最多取 3 个句子
+            if summary_length + len(sentence) > 200:
+                break
+            summary_sentences.append(sentence)
+            summary_length += len(sentence)
+        
+        summary = ' '.join(summary_sentences)
+        if len(content_without_title.strip()) > summary_length:
+            summary += "..."
+        
+        return f"{t('abstract_title')}: {title}\n{t('abstract_summary')}: {summary}"
+    
+    def extract_l1_outline(self, content: str) -> str:
+        """
+        提取 L1 大纲 - 基于语义分块提取文档结构
+        
+        Args:
+            content: 文档内容
+            
+        Returns:
+            L1 大纲字符串
+        """
+        import re
+        
+        # 首先尝试提取 Markdown 标题
+        headers = re.findall(r'^(#{1,3})\s+(.+)$', content, re.MULTILINE)
+        
+        if headers:
+            # 如果有 Markdown 标题，使用标题作为大纲
+            outline = ["【文档大纲】(基于标题):"]
+            for hashes, text in headers:
+                indent = "  " * (len(hashes) - 1)
+                outline.append(f"{indent}- {text.strip()}")
+            
+            full_outline = "\n".join(outline)
+            if len(full_outline) > 1000:
+                return full_outline[:997] + "..."
+            return full_outline
+        
+        # 如果没有标题，使用语义分块的第一句作为大纲
+        try:
+            # 使用较高的阈值进行粗粒度分块
+            chunks = self.split(content, percentile_threshold=90)
+            
+            if not chunks:
+                return "【文档大纲】: 无明确结构"
+            
+            outline = ["【文档大纲】(基于语义分块):"]
+            for i, chunk in enumerate(chunks[:10], 1):  # 最多显示 10 个分块
+                # 提取每个分块的第一句作为概要
+                sentences = self._split_sentences(chunk)
+                if sentences:
+                    first_sentence = sentences[0][:50]  # 限制长度
+                    if len(sentences[0]) > 50:
+                        first_sentence += "..."
+                    outline.append(f"  {i}. {first_sentence}")
+            
+            full_outline = "\n".join(outline)
+            if len(full_outline) > 1000:
+                return full_outline[:997] + "..."
+            return full_outline
+            
+        except Exception as e:
+            logger.warning(f"Failed to extract L1 outline using semantic chunking: {e}")
+            return "【文档大纲】: 提取失败"
+    
+    def get_metadata(self) -> Dict[str, Any]:
+        meta = super().get_metadata()
+        meta.update({
+            "description": "语义分块策略 - 基于句子嵌入相似度的智能分割",
+            "parameters": {
+                "chunk_size": {"type": "int", "default": 800, "description": "每个chunk的目标字数"},
+                "chunk_overlap": {"type": "int", "default": 150, "description": "chunks之间的重叠字数"},
+                "similarity_threshold": {"type": "float", "default": 0.5, "description": "余弦距离阈值（0-1）"},
+                "use_percentile": {"type": "bool", "default": True, "description": "是否使用百分位阈值"},
+                "percentile_threshold": {"type": "int", "default": 80, "description": "百分位阈值（0-100）"}
+            },
+            "requires_embedding_model": True
+        })
+        return meta
+
+
 class ChunkStrategyManager(IChunkStrategyManager):
     """分块策略管理器实现"""
     
-    def __init__(self, default_strategy: str = "paragraph"):
+    def __init__(self, default_strategy: str = "semantic"):
         self._strategy_instances: Dict[str, IChunkStrategy] = {}  # 已实例化的策略
         self._strategy_classes: Dict[str, Type[IChunkStrategy]] = {}  # 策略类（延迟实例化）
         self._default_strategy = default_strategy
@@ -460,6 +733,7 @@ class ChunkStrategyManager(IChunkStrategyManager):
         self._strategy_classes["character"] = CharacterChunkStrategy
         self._strategy_classes["markdown_header"] = MarkdownHeaderChunkStrategy
         self._strategy_classes["regex"] = RegexChunkStrategy
+        self._strategy_classes["semantic"] = SemanticChunkStrategy
         
         logger.debug(f"Registered {len(self._strategy_classes)} builtin chunk strategy classes")
     
